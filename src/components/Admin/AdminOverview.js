@@ -92,6 +92,8 @@ import {
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { useAdminData } from '../../contexts/AdminContext';
+import { exportToCSV, exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import websocketService from '../../services/websocketService';
 
 const AdminOverview = () => {
   const { t } = useTranslation();
@@ -110,6 +112,24 @@ const AdminOverview = () => {
     fetchAnalytics,
     exportData
   } = useAdminData();
+
+  // Track WebSocket live status
+  const [wsLive, setWsLive] = useState(false);
+
+  useEffect(() => {
+    // Check initial connection state
+    setWsLive(websocketService.isConnected());
+
+    const unsubConnect = websocketService.on('connected', () => setWsLive(true));
+    const unsubDisconnect = websocketService.on('disconnected', () => setWsLive(false));
+    const unsubReconnect = websocketService.on('reconnected', () => setWsLive(true));
+
+    return () => {
+      unsubConnect();
+      unsubDisconnect();
+      unsubReconnect();
+    };
+  }, []);
 
   // Quick Actions dialog state
   const [addUserDialog, setAddUserDialog] = useState(false);
@@ -382,7 +402,30 @@ const AdminOverview = () => {
       setExportDialog(false);
       setExportInProgress(false);
     } catch (error) {
-      setSnackbar({ open: true, message: 'Export failed: ' + error.message, severity: 'error' });
+      // Server export failed — fall back to client-side export from loaded stats
+      try {
+        const dashboardRows = [{
+          'Total Users': adminStats?.totalUsers ?? 0,
+          'Active Users': adminStats?.activeUsers ?? 0,
+          'Total Transactions': adminStats?.totalTransactions ?? 0,
+          'Total Income': adminStats?.totalUserIncome ?? 0,
+          'Total Expenses': adminStats?.totalUserExpenses ?? 0,
+          'New Users (Month)': adminStats?.newUsers ?? 0,
+          'Generated At': new Date().toLocaleString()
+        }];
+
+        if (exportFormat === 'pdf') {
+          exportToPDF(dashboardRows, 'Dashboard Overview');
+        } else if (exportFormat === 'xlsx') {
+          exportToExcel(dashboardRows, 'dashboard_export');
+        } else {
+          exportToCSV(dashboardRows, 'dashboard_export');
+        }
+        setSnackbar({ open: true, message: `Data exported locally as ${exportFormat.toUpperCase()}!`, severity: 'success' });
+        setExportDialog(false);
+      } catch (fallbackErr) {
+        setSnackbar({ open: true, message: 'Export failed: ' + (fallbackErr.message || error.message), severity: 'error' });
+      }
       setExportInProgress(false);
     }
   };
@@ -405,7 +448,23 @@ const AdminOverview = () => {
       setSnackbar({ open: true, message: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated!`, severity: 'success' });
       setReportDialog(false);
     } catch (error) {
-      setSnackbar({ open: true, message: 'Failed to generate report', severity: 'error' });
+      // Server report generation failed — fall back to local PDF
+      try {
+        const reportRows = [{
+          'Report Type': reportType,
+          'Total Users': adminStats?.totalUsers ?? 0,
+          'Active Users': adminStats?.activeUsers ?? 0,
+          'Total Transactions': adminStats?.totalTransactions ?? 0,
+          'Total Income': adminStats?.totalUserIncome ?? 0,
+          'Total Expenses': adminStats?.totalUserExpenses ?? 0,
+          'Generated At': new Date().toLocaleString()
+        }];
+        exportToPDF(reportRows, `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`);
+        setSnackbar({ open: true, message: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated locally!`, severity: 'success' });
+        setReportDialog(false);
+      } catch (fallbackErr) {
+        setSnackbar({ open: true, message: 'Failed to generate report', severity: 'error' });
+      }
     }
   };
 
@@ -421,13 +480,49 @@ const AdminOverview = () => {
 
   return (
     <Box>
-      {/* Loading State */}
+      {/* Loading State — Skeleton Cards */}
       {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-          <CircularProgress size={40} />
-          <Typography variant="body1" sx={{ ml: 2 }}>
-            Loading real data from database...
-          </Typography>
+        <Box>
+          <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mb: isMobile ? 2 : 4 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <Grid item xs={6} sm={6} md={3} key={i}>
+                <Card elevation={3} sx={{ borderRadius: isMobile ? 2 : 3, minHeight: isMobile ? 100 : 130 }}>
+                  <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Skeleton variant="text" width="60%" height={isMobile ? 28 : 40} />
+                        <Skeleton variant="text" width="80%" height={16} sx={{ mt: 0.5 }} />
+                        {!isMobile && <Skeleton variant="text" width="40%" height={14} sx={{ mt: 0.5 }} />}
+                      </Box>
+                      <Skeleton variant="circular" width={isMobile ? 28 : 40} height={isMobile ? 28 : 40} />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+          <Grid container spacing={isMobile ? 1.5 : 3}>
+            <Grid item xs={12} md={8}>
+              <Card elevation={2} sx={{ borderRadius: 2, p: 2 }}>
+                <Skeleton variant="text" width="30%" height={28} sx={{ mb: 2 }} />
+                <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1 }} />
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card elevation={2} sx={{ borderRadius: 2, p: 2 }}>
+                <Skeleton variant="text" width="50%" height={28} sx={{ mb: 2 }} />
+                {[0, 1, 2, 3].map((i) => (
+                  <Box key={i} sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
+                    <Skeleton variant="circular" width={32} height={32} />
+                    <Box sx={{ flex: 1 }}>
+                      <Skeleton variant="text" width="70%" height={16} />
+                      <Skeleton variant="text" width="40%" height={14} />
+                    </Box>
+                  </Box>
+                ))}
+              </Card>
+            </Grid>
+          </Grid>
         </Box>
       )}
 
@@ -443,6 +538,27 @@ const AdminOverview = () => {
       )}
 
       {/* Real Database Stats Cards - Mobile Optimized */}
+      {/* Live indicator */}
+      {wsLive && (
+        <Chip
+          size="small"
+          label="LIVE"
+          color="success"
+          sx={{
+            mb: 1,
+            fontWeight: 'bold',
+            fontSize: '0.65rem',
+            height: 22,
+            animation: 'pulse 2s infinite',
+            '@keyframes pulse': {
+              '0%': { opacity: 1 },
+              '50%': { opacity: 0.6 },
+              '100%': { opacity: 1 },
+            },
+          }}
+          icon={<Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main', ml: 1 }} />}
+        />
+      )}
       <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mb: isMobile ? 2 : 4 }}>
         <Grid item xs={6} sm={6} md={3}>
           <Card elevation={3} sx={{ 

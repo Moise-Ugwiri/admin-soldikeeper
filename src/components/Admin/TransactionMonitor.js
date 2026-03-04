@@ -30,6 +30,7 @@ import {
   Alert,
   Tooltip,
   Paper,
+  Skeleton,
   useTheme,
   useMediaQuery
 } from '@mui/material';
@@ -52,6 +53,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAdminData } from '../../contexts/AdminContext';
 import { formatCurrency } from '../../utils/helpers';
+import { exportToCSV, exportToExcel, flattenTransaction } from '../../utils/exportUtils';
 
 const TransactionMonitor = () => {
   const { t } = useTranslation();
@@ -191,9 +193,15 @@ const TransactionMonitor = () => {
     }
   };
 
-  // Handle bulk export
-  const handleBulkExport = () => {
-    exportData('transactions', 'csv');
+  // Handle bulk export — try server-side first, fall back to client-side CSV
+  const handleBulkExport = async () => {
+    try {
+      await exportData('transactions', 'csv');
+    } catch {
+      // Server export unavailable — export locally from loaded data
+      const rows = (transactions || []).map(flattenTransaction);
+      exportToCSV(rows, 'transactions_export');
+    }
   };
 
   // Get status color (transactions don't have status field, so we'll use a default)
@@ -231,22 +239,22 @@ const TransactionMonitor = () => {
   return (
     <Box>
       {/* Statistics Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mb: isMobile ? 2 : 3 }}>
         {transactionStats.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid item xs={6} sm={6} md={3} key={index}>
             <Card elevation={2}>
-              <CardContent>
+              <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="h4" fontWeight="bold" color={stat.color}>
-                      {stat.value}
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant={isMobile ? 'h6' : 'h4'} fontWeight="bold" color={stat.color}>
+                      {loading ? <Skeleton width={50} /> : stat.value}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" noWrap>
                       {stat.title}
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
-                    <Box sx={{ color: stat.color, mb: 1 }}>
+                    <Box sx={{ color: stat.color, mb: 0.5 }}>
                       {stat.icon}
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -298,7 +306,7 @@ const TransactionMonitor = () => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{ minWidth: 300 }}
+                sx={{ minWidth: isMobile ? 0 : 300, width: isMobile ? '100%' : 'auto' }}
               />
               
               <FormControl sx={{ minWidth: 150 }}>
@@ -363,9 +371,9 @@ const TransactionMonitor = () => {
       </Card>
 
       {/* Transactions Table */}
-      <Card elevation={2}>
-        <TableContainer>
-          <Table>
+      <Card elevation={2} sx={{ overflow: 'hidden' }}>
+        <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Table sx={{ minWidth: isMobile ? 700 : 'auto' }}>
             <TableHead>
               <TableRow>
                 <TableCell>{t('admin.transactions.table.transaction')}</TableCell>
@@ -378,7 +386,25 @@ const TransactionMonitor = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(transactions || []).length === 0 ? (
+              {loading ? (
+                // Skeleton loading rows
+                [...Array(5)].map((_, i) => (
+                  <TableRow key={`skel-${i}`}>
+                    <TableCell>
+                      <Box>
+                        <Skeleton variant="text" width={140} height={18} />
+                        <Skeleton variant="text" width={80} height={14} />
+                      </Box>
+                    </TableCell>
+                    <TableCell><Skeleton variant="text" width={80} height={18} /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={65} height={24} /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={75} height={24} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={100} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={90} /></TableCell>
+                    <TableCell align="right"><Skeleton variant="circular" width={28} height={28} /></TableCell>
+                  </TableRow>
+                ))
+              ) : (transactions || []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">

@@ -1,18 +1,11 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AdminProvider } from './contexts/AdminContext';
+import { ThemeContextProvider, useThemeMode } from './contexts/ThemeContext';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import AdminLogin from './components/Admin/AdminLogin';
-
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: { main: '#1976d2' },
-    background: { default: '#0a1929', paper: '#0d2137' },
-  },
-});
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -36,9 +29,10 @@ function AppRoutes() {
   );
 }
 
-export default function App() {
+function ThemedApp() {
+  const { theme } = useThemeMode();
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={theme}>
       <CssBaseline />
       <BrowserRouter>
         <AuthProvider>
@@ -46,5 +40,13 @@ export default function App() {
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeContextProvider>
+      <ThemedApp />
+    </ThemeContextProvider>
   );
 }

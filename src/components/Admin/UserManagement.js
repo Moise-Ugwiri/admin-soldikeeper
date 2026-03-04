@@ -38,6 +38,7 @@ import {
   CircularProgress,
   LinearProgress,
   Stack,
+  Skeleton,
   List,
   ListItem,
   ListItemText,
@@ -76,6 +77,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useTranslation } from 'react-i18next';
 import { useAdminData } from '../../contexts/AdminContext';
+import { exportToCSV, exportToExcel, flattenUser } from '../../utils/exportUtils';
 
 const UserManagement = () => {
   const { t } = useTranslation();
@@ -264,9 +266,15 @@ const UserManagement = () => {
     }
   };
 
-  // Handle bulk actions
-  const handleBulkExport = () => {
-    exportData('users', 'csv');
+  // Handle bulk actions — try server-side first, fall back to client-side CSV
+  const handleBulkExport = async () => {
+    try {
+      await exportData('users', 'csv');
+    } catch {
+      // Server export unavailable — export locally from loaded data
+      const rows = (users || []).map(flattenUser);
+      exportToCSV(rows, 'users_export');
+    }
   };
 
   // Handle edit form submission
@@ -397,17 +405,17 @@ const UserManagement = () => {
   return (
     <Box>
       {/* Statistics Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mb: isMobile ? 2 : 3 }}>
         {userStats.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid item xs={6} sm={6} md={3} key={index}>
             <Card elevation={2}>
-              <CardContent>
+              <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="h4" fontWeight="bold" color={stat.color}>
-                      {stat.value}
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold" color={stat.color}>
+                      {loading ? <Skeleton width={40} /> : stat.value}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" noWrap>
                       {stat.title}
                     </Typography>
                   </Box>
@@ -459,10 +467,10 @@ const UserManagement = () => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{ minWidth: 300 }}
+                sx={{ minWidth: isMobile ? 0 : 300, width: isMobile ? '100%' : 'auto' }}
               />
               
-              <FormControl sx={{ minWidth: 150 }}>
+              <FormControl sx={{ minWidth: isMobile ? 0 : 150, width: isMobile ? '100%' : 'auto' }}>
                 <InputLabel>{t('admin.users.filters.status')}</InputLabel>
                 <Select
                   value={statusFilter}
@@ -476,7 +484,7 @@ const UserManagement = () => {
                 </Select>
               </FormControl>
 
-              <FormControl sx={{ minWidth: 150 }}>
+              <FormControl sx={{ minWidth: isMobile ? 0 : 150, width: isMobile ? '100%' : 'auto' }}>
                 <InputLabel>{t('admin.users.filters.dateRange')}</InputLabel>
                 <Select
                   value={dateRange}
@@ -513,9 +521,9 @@ const UserManagement = () => {
       </Card>
 
       {/* Users Table */}
-      <Card elevation={2}>
-        <TableContainer>
-          <Table>
+      <Card elevation={2} sx={{ overflow: 'hidden' }}>
+        <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Table sx={{ minWidth: isMobile ? 700 : 'auto' }}>
             <TableHead>
               <TableRow>
                 <TableCell>{t('admin.users.table.user')}</TableCell>
@@ -528,11 +536,32 @@ const UserManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(users || []).length === 0 ? (
+              {loading ? (
+                // Skeleton loading rows
+                [...Array(5)].map((_, i) => (
+                  <TableRow key={`skel-${i}`}>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 2 }} />
+                        <Box>
+                          <Skeleton variant="text" width={120} height={18} />
+                          <Skeleton variant="text" width={80} height={14} />
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell><Skeleton variant="text" width={160} /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={70} height={24} /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={60} height={24} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={90} /></TableCell>
+                    <TableCell><Skeleton variant="text" width={90} /></TableCell>
+                    <TableCell align="right"><Skeleton variant="circular" width={28} height={28} /></TableCell>
+                  </TableRow>
+                ))
+              ) : (users || []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
-                      {loading ? 'Loading users...' : 'No users found'}
+                      {loading ? 'Loading users...' : t('admin.users.search.noResults', 'No users found')}
                     </Typography>
                   </TableCell>
                 </TableRow>

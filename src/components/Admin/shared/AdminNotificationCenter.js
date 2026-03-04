@@ -20,7 +20,8 @@ import {
   CircularProgress,
   useTheme,
   alpha,
-  Slide
+  Slide,
+  Alert
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -42,6 +43,7 @@ import {
   Analytics as AnalyticsIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import adminService from '../../../services/adminService';
 
 // Notification types and their configurations
 const NOTIFICATION_TYPES = {
@@ -65,6 +67,7 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Add a new notification
   const addNotification = useCallback((notification) => {
@@ -113,48 +116,43 @@ export const NotificationProvider = ({ children }) => {
     setUnreadCount(0);
   }, []);
 
-  // Fetch notifications from server
+  // Map activity-log action types to notification types
+  const mapActionToType = (action) => {
+    if (!action) return 'info';
+    const a = action.toLowerCase();
+    if (a.includes('login') || a.includes('security') || a.includes('block') || a.includes('suspicious')) return 'security';
+    if (a.includes('user') || a.includes('register') || a.includes('signup')) return 'user';
+    if (a.includes('payment') || a.includes('transaction') || a.includes('subscription')) return 'payment';
+    if (a.includes('error') || a.includes('fail')) return 'error';
+    if (a.includes('success') || a.includes('complet')) return 'success';
+    if (a.includes('warn')) return 'warning';
+    return 'info';
+  };
+
+  // Fetch notifications from real API (activity logs)
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      // This would typically fetch from an API
-      // For now, we'll use mock data
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const mockNotifications = [
-        {
-          id: 1,
-          type: 'security',
-          title: 'Failed Login Attempt',
-          message: 'Multiple failed login attempts detected from IP 192.168.1.100',
-          timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-          read: false,
-          priority: 'high'
-        },
-        {
-          id: 2,
-          type: 'user',
-          title: 'New User Registered',
-          message: '15 new users have registered in the last hour',
-          timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
-          read: false,
-          priority: 'normal'
-        },
-        {
-          id: 3,
-          type: 'payment',
-          title: 'Large Transaction',
-          message: 'Transaction of €5,000 requires review',
-          timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-          read: true,
-          priority: 'normal'
-        }
-      ];
-      
-      setNotifications(mockNotifications);
-      setUnreadCount(mockNotifications.filter(n => !n.read).length);
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      const data = await adminService.getActivityLogs(1, 30, {});
+      const logs = Array.isArray(data?.logs) ? data.logs : (Array.isArray(data) ? data : []);
+
+      const mapped = logs.map((log, idx) => ({
+        id: log._id || log.id || Date.now() + idx,
+        type: mapActionToType(log.action || log.type),
+        title: log.action || log.type || 'Activity',
+        message: log.details || log.description || log.message || '',
+        timestamp: log.createdAt || log.timestamp || new Date().toISOString(),
+        read: false,
+        priority: (log.severity === 'high' || log.severity === 'critical') ? 'high' : 'normal'
+      }));
+
+      setNotifications(mapped);
+      setUnreadCount(mapped.length);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+      setError(err.message || 'Failed to load notifications');
+      // Keep existing notifications on error
     } finally {
       setLoading(false);
     }
@@ -169,6 +167,7 @@ export const NotificationProvider = ({ children }) => {
     notifications,
     unreadCount,
     loading,
+    error,
     addNotification,
     markAsRead,
     markAllAsRead,
@@ -205,6 +204,7 @@ const AdminNotificationCenter = memo(({ maxNotifications = 50 }) => {
     notifications,
     unreadCount,
     loading,
+    error,
     markAsRead,
     markAllAsRead,
     deleteNotification,
@@ -361,6 +361,11 @@ const AdminNotificationCenter = memo(({ maxNotifications = 50 }) => {
 
         {/* Notifications list */}
         <Box sx={{ maxHeight: 350, overflow: 'auto' }}>
+          {error && (
+            <Alert severity="warning" sx={{ m: 1 }} onClose={() => {}}>
+              {error}
+            </Alert>
+          )}
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress size={32} />

@@ -56,3 +56,6 @@ export { default as ActivityTimeline } from './ActivityTimeline';
 
 // Integration Hub - Third-party integrations management
 export { default as IntegrationHub } from './IntegrationHub';
+
+// Tab Error Boundary - Lightweight error boundary for individual tabs/sections
+export { default as TabErrorBoundary } from './TabErrorBoundary';

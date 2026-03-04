@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import adminService from '../services/adminService';
 import websocketService from '../services/websocketService';
+import { useAuth } from './AuthContext';
 
 // Initial state
 const initialState = {
@@ -221,6 +222,8 @@ const ACTIONS = {
   SET_COMPLIANCE_DATA: 'SET_COMPLIANCE_DATA',
   SET_ADMIN_ROLES: 'SET_ADMIN_ROLES',
   SET_ADMIN_USERS: 'SET_ADMIN_USERS',
+  // Real-time increments (WebSocket-driven)
+  INCREMENT_STAT: 'INCREMENT_STAT',
   // Escalation Management (PROJECT OLYMPUS)
   SET_ESCALATIONS: 'SET_ESCALATIONS',
   SET_ESCALATION_STATS: 'SET_ESCALATION_STATS',
@@ -359,6 +362,18 @@ const adminReducer = (state, action) => {
     case ACTIONS.SET_ADMIN_USERS:
       return { ...state, adminUsers: action.payload };
 
+    // Real-time increments (WebSocket-driven)
+    case ACTIONS.INCREMENT_STAT: {
+      const { field, amount = 1 } = action.payload;
+      return {
+        ...state,
+        adminStats: {
+          ...state.adminStats,
+          [field]: (state.adminStats[field] || 0) + amount
+        }
+      };
+    }
+
     // Escalation Management (PROJECT OLYMPUS)
     case ACTIONS.SET_ESCALATIONS:
       return { 
@@ -418,6 +433,7 @@ export const useAdminData = () => {
 // Provider
 export const AdminProvider = ({ children }) => {
   const [state, dispatch] = useReducer(adminReducer, initialState);
+  const { isAuthenticated } = useAuth();
 
   // Actions
   const setLoading = useCallback((loading) => {
@@ -1243,13 +1259,18 @@ export const AdminProvider = ({ children }) => {
     });
   }, []);
 
-  // WebSocket connection for real-time updates
+  // WebSocket connection for real-time updates — reactive to auth state
   const wsConnected = useRef(false);
   
   useEffect(() => {
+    // Only connect when authenticated and token is available
     const token = localStorage.getItem('token');
-    if (!token) {
-      console.log('⚠️ No auth token, skipping WebSocket connection');
+    if (!isAuthenticated || !token) {
+      // If we were connected but auth was lost, disconnect
+      if (wsConnected.current) {
+        websocketService.disconnect();
+        wsConnected.current = false;
+      }
       return;
     }
 
@@ -1274,20 +1295,16 @@ export const AdminProvider = ({ children }) => {
       wsUrl = `${wsProtocol}//${window.location.hostname}:${process.env.REACT_APP_API_PORT || 5000}/admin/realtime`;
     }
 
-    console.log('🔌 Initializing WebSocket connection to:', wsUrl);
-
     // Connect to WebSocket
     websocketService.connect(wsUrl, token);
     wsConnected.current = true;
 
-    // Subscribe to events
+    // Subscribe to connection lifecycle events
     const unsubscribeConnected = websocketService.on('connected', () => {
-      console.log('✅ Admin WebSocket connected');
       dispatch({ type: ACTIONS.SET_ERROR, payload: null });
     });
 
-    const unsubscribeDisconnected = websocketService.on('disconnected', (data) => {
-      console.log('🔌 Admin WebSocket disconnected:', data);
+    const unsubscribeDisconnected = websocketService.on('disconnected', () => {
       wsConnected.current = false;
     });
 
@@ -1295,13 +1312,9 @@ export const AdminProvider = ({ children }) => {
       console.error('WebSocket error:', data);
     });
 
-    const unsubscribeReconnecting = websocketService.on('reconnecting', (data) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`WebSocket reconnecting... (${data.attempt}/${data.maxAttempts})`);
-      }
-    });
+    const unsubscribeReconnecting = websocketService.on('reconnecting', () => {});
 
-    // Subscribe to admin-specific events - silent updates
+    // Subscribe to admin-specific events — drives live dashboard updates
     const unsubscribeStats = websocketService.on('admin:stats', (data) => {
       dispatch({ type: ACTIONS.SET_ADMIN_STATS, payload: data });
     });
@@ -1318,8 +1331,17 @@ export const AdminProvider = ({ children }) => {
       dispatch({ type: ACTIONS.UPDATE_TRANSACTION, payload: data });
     });
 
+    // Live counter increments — makes the overview feel "live"
+    const unsubscribeUserNew = websocketService.on('user:new', () => {
+      dispatch({ type: ACTIONS.INCREMENT_STAT, payload: { field: 'totalUsers' } });
+      dispatch({ type: ACTIONS.INCREMENT_STAT, payload: { field: 'newUsers' } });
+    });
+
+    const unsubscribeTransactionNew = websocketService.on('transaction:new', () => {
+      dispatch({ type: ACTIONS.INCREMENT_STAT, payload: { field: 'totalTransactions' } });
+    });
+
     const unsubscribeSecurityAlert = websocketService.on('admin:security:alert', (data) => {
-      console.log('🚨 Security alert received');
       dispatch({ 
         type: ACTIONS.SET_SECURITY_ALERTS, 
         payload: [data, ...(state.securityAlerts || [])] 
@@ -1329,12 +1351,11 @@ export const AdminProvider = ({ children }) => {
     // Fallback polling if WebSocket is not available after 10 seconds
     const fallbackTimer = setTimeout(() => {
       if (!websocketService.isConnected()) {
-        console.log('WebSocket not connected, using fallback polling');
         const pollingInterval = setInterval(() => {
           if (!websocketService.isConnected() && fetchRealtimeData) {
             fetchRealtimeData();
           }
-        }, 60000); // 1 minute instead of 30s
+        }, 60000); // 1 minute
 
         return () => clearInterval(pollingInterval);
       }
@@ -1351,16 +1372,17 @@ export const AdminProvider = ({ children }) => {
       unsubscribeRealtime();
       unsubscribeUserUpdate();
       unsubscribeTransactionUpdate();
+      unsubscribeUserNew();
+      unsubscribeTransactionNew();
       unsubscribeSecurityAlert();
       
       if (wsConnected.current) {
-        console.log('🔌 Disconnecting WebSocket...');
         websocketService.disconnect();
         wsConnected.current = false;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount - don't include state dependencies that cause re-connections
+  }, [isAuthenticated]); // Re-run when auth state changes (login/logout)
 
   // Initial data fetch
   useEffect(() => {
