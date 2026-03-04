@@ -174,9 +174,32 @@ const DataExporter = memo(({
 
   // Default export implementation
   const defaultExport = async (format, data, columns, selectedCols, filename) => {
-    const filteredColumns = columns.filter(
-      col => selectedCols.includes(col.field || col.id)
-    );
+    const filteredColumns = columns
+      ? columns.filter(col => selectedCols.includes(col.field || col.id))
+      : [];
+
+    // For excel and pdf, use the shared exportUtils
+    if (format === 'excel' || format === 'pdf') {
+      const { exportToExcel, exportToPDF } = await import('../../../utils/exportUtils');
+      // Filter data to only include selected columns if columns are defined
+      const exportData = filteredColumns.length > 0
+        ? data.map(row => {
+            const filtered = {};
+            filteredColumns.forEach(col => {
+              const field = col.field || col.id;
+              filtered[col.label || field] = row[field] ?? '';
+            });
+            return filtered;
+          })
+        : data;
+
+      if (format === 'pdf') {
+        exportToPDF(exportData, filename);
+      } else {
+        exportToExcel(exportData, filename);
+      }
+      return;
+    }
 
     let content;
     let mimeType;
@@ -194,7 +217,11 @@ const DataExporter = memo(({
         extension = '.json';
         break;
       default:
-        throw new Error(`Format ${format} not supported for client-side export`);
+        // Fallback: try CSV for any unknown format
+        content = convertToCSV(data, filteredColumns);
+        mimeType = 'text/csv';
+        extension = '.csv';
+        break;
     }
 
     // Download file

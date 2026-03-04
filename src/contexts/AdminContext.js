@@ -992,25 +992,47 @@ export const AdminProvider = ({ children }) => {
 
   const exportAuditLogs = useCallback(async (format = 'csv', dateRange = 'last30days') => {
     try {
+      // Try server-side export first
       const blob = await adminService.exportAuditLogs(format, dateRange);
       
-      if (format === 'csv') {
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `audit_logs_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `audit_logs_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
       return blob;
     } catch (error) {
-      setError(error.message);
-      throw error;
+      // Fallback to client-side export using in-memory audit logs
+      try {
+        const { exportToCSV, exportToExcel, exportToPDF } = await import('../utils/exportUtils');
+        const auditLogs = (state.complianceData && state.complianceData.auditLogs) || state.activityLogs || [];
+
+        if (auditLogs.length === 0) {
+          setError('No audit log data available to export. Please load compliance data first.');
+          return;
+        }
+
+        switch (format) {
+          case 'pdf':
+            exportToPDF(auditLogs, 'Audit Logs Export');
+            break;
+          case 'excel':
+          case 'xlsx':
+            exportToExcel(auditLogs, 'audit_logs');
+            break;
+          default:
+            exportToCSV(auditLogs, 'audit_logs');
+        }
+      } catch (fallbackError) {
+        setError('Export failed: ' + (fallbackError.message || 'Unknown error'));
+        throw fallbackError;
+      }
     }
-  }, [setError]);
+  }, [state.complianceData, state.activityLogs, setError]);
 
   // Admin Roles Management
   const fetchAdminRoles = useCallback(async () => {
@@ -1226,6 +1248,7 @@ export const AdminProvider = ({ children }) => {
   // Export data
   const exportData = useCallback(async (type, format = 'csv') => {
     try {
+      // Try server-side export first
       const blob = await adminService.exportData(type, format);
       
       // Create download link
@@ -1238,9 +1261,54 @@ export const AdminProvider = ({ children }) => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      setError(error.message);
+      // Fallback to client-side export using in-memory data
+      try {
+        const { exportToCSV, exportToExcel, exportToPDF, flattenUser, flattenTransaction } = await import('../utils/exportUtils');
+
+        let data = [];
+        const filename = type;
+
+        switch (type) {
+          case 'dashboard':
+            data = [{ ...(state.adminStats || {}) }];
+            break;
+          case 'users':
+            data = (state.users || []).map(flattenUser);
+            break;
+          case 'transactions':
+            data = (state.transactions || []).map(flattenTransaction);
+            break;
+          case 'activity-logs':
+            data = state.activityLogs || [];
+            break;
+          case 'compliance':
+            data = (state.complianceData && state.complianceData.auditLogs) || [];
+            break;
+          default:
+            data = [{ ...(state.adminStats || {}) }];
+        }
+
+        if (data.length === 0) {
+          setError('No data available to export. Please load the data first.');
+          return;
+        }
+
+        switch (format) {
+          case 'pdf':
+            exportToPDF(data, `${type} Export`);
+            break;
+          case 'excel':
+          case 'xlsx':
+            exportToExcel(data, filename);
+            break;
+          default:
+            exportToCSV(data, filename);
+        }
+      } catch (fallbackError) {
+        setError('Export failed: ' + (fallbackError.message || 'Unknown error'));
+      }
     }
-  }, [setError]);
+  }, [state.adminStats, state.users, state.transactions, state.activityLogs, state.complianceData, setError]);
 
   // Refresh all data
   const refreshData = useCallback(async () => {
