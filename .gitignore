@@ -1,2 +1,7 @@
-node_modules/\nbuild/\n.env.local\n.env.development.local\n.env.test.local\n.env.production.local
+node_modules/
+build/
 node_modules/.cache/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
