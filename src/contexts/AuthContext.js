@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await axios.post(`${API_BASE}/auth/login`, { email, password });
-    const { token, user: userData } = res.data;
+    const { token, user: userData } = res.data.data || res.data;
     if (!userData?.isAdmin) {
       throw new Error('Access denied: Admin privileges required');
     }
