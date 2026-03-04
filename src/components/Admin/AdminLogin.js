@@ -74,7 +74,7 @@ const AdminLogin = () => {
       }
 
       // Attempt login
-      await login(credentials);
+      await login(credentials.email, credentials.password);
       
       // Login successful - let ProtectedAdminRoute handle admin verification
       // The navigation will happen automatically when the user context updates
