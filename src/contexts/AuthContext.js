@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
+    const token = localStorage.getItem('token');
     if (token) {
       axios.get(`${API_BASE}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -18,10 +18,10 @@ export function AuthProvider({ children }) {
         if (res.data.user?.isAdmin || res.data.isAdmin) {
           setUser(res.data.user || res.data);
         } else {
-          localStorage.removeItem('adminToken');
+          localStorage.removeItem('token');
         }
       }).catch(() => {
-        localStorage.removeItem('adminToken');
+        localStorage.removeItem('token');
       }).finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -34,13 +34,13 @@ export function AuthProvider({ children }) {
     if (!userData?.isAdmin) {
       throw new Error('Access denied: Admin privileges required');
     }
-    localStorage.setItem('adminToken', token);
+    localStorage.setItem('token', token);
     setUser(userData);
     return userData;
   };
 
   const logout = () => {
-    localStorage.removeItem('adminToken');
+    localStorage.removeItem('token');
     setUser(null);
   };
 
