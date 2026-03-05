@@ -19,7 +19,7 @@ import {
 import {
   Lock as LockIcon
 } from '@mui/icons-material';
-import apiClient from '../../../../services/api';
+import apiClient from '../../../services/api';
 
 const AgentAutonomySlider = ({
   agentId,

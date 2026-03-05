@@ -32,7 +32,7 @@ import {
   PlayArrow as StartedIcon,
   HourglassTop as InProgressIcon
 } from '@mui/icons-material';
-import apiClient from '../../../../services/api';
+import apiClient from '../../../services/api';
 
 const outcomeConfig = {
   completed: { icon: SuccessIcon, color: '#4CAF50', label: 'Success' },
