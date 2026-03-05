@@ -23,8 +23,7 @@ import {
   Circle as StatusDot,
   TrendingUp as TrendUpIcon,
   TrendingDown as TrendDownIcon,
-  TrendingFlat as TrendFlatIcon,
-  PlayArrow as TriggerIcon
+  TrendingFlat as TrendFlatIcon
 } from '@mui/icons-material';
 import AgentAutonomySlider from './AgentAutonomySlider';
 
