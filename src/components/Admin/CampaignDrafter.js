@@ -112,7 +112,7 @@ export default function CampaignDrafter() {
               <Grid item xs={12} md={6} key={label}>
                 <Box sx={{ p: 1.5, background: alpha('#fff', 0.05), borderRadius: 1 }}>
                   <Typography variant="caption" color="text.secondary">{label}</Typography>
-                  <Typography variant="body2" fontWeight="bold">{value}</Typography>
+                  <Typography variant="body2" fontWeight="bold">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Typography>
                 </Box>
               </Grid>
             ) : null)}
@@ -125,7 +125,7 @@ export default function CampaignDrafter() {
                       {copied ? 'Copied!' : 'Copy'}
                     </Button>
                   </Box>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{result.body}</Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{typeof result.body === 'object' ? JSON.stringify(result.body, null, 2) : result.body}</Typography>
                 </Box>
               </Grid>
             )}
