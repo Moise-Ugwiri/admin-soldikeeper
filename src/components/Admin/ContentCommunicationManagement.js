@@ -148,6 +148,7 @@ import { useTranslation } from 'react-i18next';
 import { useAdminData } from '../../contexts/AdminContext';
 import adminService from '../../services/adminService';
 import { adminGetTickets, adminGetTicket, adminUpdateTicket, adminReply, adminGetStats } from '../../services/supportAPI';
+import GrowthCommandCenter from './GrowthCommandCenter';
 
 // ─── Admin Support Panel ────────────────────────────────────────────────────
 const PRIORITY_COLORS = { low: '#6b7280', medium: '#3b82f6', high: '#f59e0b', urgent: '#ef4444' };
@@ -743,22 +744,24 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
   // Load data when component mounts or tab changes
   useLayoutEffect(() => {
     switch (activeTab) {
-      case 0: // Notifications
+      case 0: // War Room - handled by GrowthCommandCenter
+        break;
+      case 1: // Notifications
         if (fetchNotifications) {
           fetchNotifications(1);
         }
         break;
-      case 1: // Email Campaigns
+      case 2: // Email Campaigns
         if (fetchEmailCampaigns) {
           fetchEmailCampaigns(1);
         }
         break;
-      case 2: // Help Center
+      case 3: // Help Center
         if (fetchHelpContent) {
           fetchHelpContent(1);
         }
         break;
-      case 4: // Analytics
+      case 5: // Analytics
         if (fetchCommunicationAnalytics) {
           fetchCommunicationAnalytics('6m');
         }
@@ -1180,6 +1183,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
             variant="scrollable"
             scrollButtons="auto"
           >
+            <Tab icon={<Notifications />} label="War Room 🎯" />
             <Tab icon={<Notifications />} label="Notifications" />
             <Tab icon={<Email />} label="Email Campaigns" />
             <Tab icon={<Help />} label="Help Center" />
@@ -1189,8 +1193,13 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
           </Tabs>
         </Box>
 
-        {/* Notifications Tab */}
+        {/* War Room Tab */}
         <TabPanel value={activeTab} index={0}>
+          <GrowthCommandCenter />
+        </TabPanel>
+
+        {/* Notifications Tab */}
+        <TabPanel value={activeTab} index={1}>
           <Box sx={{ px: 3, py: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6">
@@ -1358,7 +1367,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         </TabPanel>
 
         {/* Email Campaigns Tab */}
-        <TabPanel value={activeTab} index={1}>
+        <TabPanel value={activeTab} index={2}>
           <Box sx={{ px: 3, py: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6">
@@ -1504,7 +1513,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         </TabPanel>
 
         {/* Help Center Tab */}
-        <TabPanel value={activeTab} index={2}>
+        <TabPanel value={activeTab} index={3}>
           <Box sx={{ px: 3, py: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6">
@@ -1678,7 +1687,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         </TabPanel>
 
         {/* Support Tab */}
-        <TabPanel value={activeTab} index={3}>
+        <TabPanel value={activeTab} index={4}>
           <Box sx={{ px: 3, py: 2 }}>
             <Typography variant="h6" gutterBottom fontWeight={700}>Support Tickets</Typography>
             <AdminSupportPanel />
@@ -1686,7 +1695,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         </TabPanel>
 
         {/* Analytics Tab */}
-        <TabPanel value={activeTab} index={4}>
+        <TabPanel value={activeTab} index={5}>
           <Box sx={{ px: 3, py: 2 }}>
             {/* Date Range Selector */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -2257,7 +2266,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         </TabPanel>
 
         {/* Templates Tab */}
-        <TabPanel value={activeTab} index={5}>
+        <TabPanel value={activeTab} index={6}>
           <Box sx={{ px: 3, py: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6">
