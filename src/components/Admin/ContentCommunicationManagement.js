@@ -454,6 +454,19 @@ const AdminSupportPanel = () => {
   );
 };
 
+// TabPanel must be defined at module scope to avoid remount on parent re-render
+const TabPanel = ({ children, value, index, ...other }) => (
+  <div
+    role="tabpanel"
+    hidden={value !== index}
+    id={`content-tabpanel-${index}`}
+    aria-labelledby={`content-tab-${index}`}
+    {...other}
+  >
+    {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+  </div>
+);
+
 const ContentCommunicationManagement = () => {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
@@ -1057,18 +1070,6 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
   };
 
   // Tab Panel component
-  const TabPanel = ({ children, value, index, ...other }) => (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`content-tabpanel-${index}`}
-      aria-labelledby={`content-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-    </div>
-  );
-
   return (
     <Box>
       {/* Header */}
