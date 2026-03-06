@@ -96,8 +96,10 @@ export const AINotificationDrafter = ({ onResult }) => {
     setDraft(null);
     try {
       const res = await draftNotificationAI({ context, audience });
-      setDraft(res.data?.draft || res.data);
+      const result = res.data?.draft || res.data;
+      setDraft(result);
       setExpanded(true);
+      if (onResult && result) onResult(result); // auto-fill form immediately
     } catch (e) {
       setError(e?.response?.data?.message || 'AI generation failed. Please try again.');
     } finally {
@@ -185,7 +187,9 @@ export const AICampaignDrafter = ({ onResult }) => {
     setDraft(null);
     try {
       const res = await draftCampaign({ objective, tone });
-      setDraft(res.data?.draft || res.data);
+      const result = res.data?.draft || res.data;
+      setDraft(result);
+      if (onResult && result) onResult(result); // auto-fill form immediately
     } catch (e) {
       setError(e?.response?.data?.message || 'AI generation failed. Please try again.');
     } finally {
@@ -267,7 +271,9 @@ export const AIContentDrafter = ({ onResult }) => {
     setDraft(null);
     try {
       const res = await draftHelpArticleAI({ topic, userQuestion });
-      setDraft(res.data?.draft || res.data);
+      const result = res.data?.draft || res.data;
+      setDraft(result);
+      if (onResult && result) onResult(result); // auto-fill form immediately
     } catch (e) {
       setError(e?.response?.data?.message || 'AI generation failed. Please try again.');
     } finally {
@@ -345,7 +351,9 @@ export const AITemplateDrafter = ({ onResult }) => {
     setDraft(null);
     try {
       const res = await generateTemplateAI({ description, type });
-      setDraft(res.data?.template || res.data);
+      const result = res.data?.template || res.data;
+      setDraft(result);
+      if (onResult && result) onResult(result); // auto-fill form immediately
     } catch (e) {
       setError(e?.response?.data?.message || 'AI generation failed. Please try again.');
     } finally {
