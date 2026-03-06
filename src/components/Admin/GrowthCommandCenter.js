@@ -61,6 +61,9 @@ import {
   ReferenceLine,
   Legend,
 } from 'recharts';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CampaignDrafter from './CampaignDrafter';
+import WeeklyStrategyAdvisor from './WeeklyStrategyAdvisor';
 import {
   getWarRoomDashboard,
   getRevenueForecast,
@@ -69,6 +72,7 @@ import {
   getDripSequences,
   getReferralStats,
   getAiRecommendations,
+  getConversionFunnel,
 } from '../../services/growthAPI';
 
 const GREEN = '#00C853';
@@ -375,6 +379,60 @@ function WarRoomTab() {
 
 // ─── Conversion (Drip Sequences) Tab ─────────────────────────────────────────
 
+function ConversionFunnelPanel() {
+  const [funnel, setFunnel] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getConversionFunnel()
+      .then(res => setFunnel(res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <Skeleton variant="rectangular" height={120} sx={{ mb: 2, borderRadius: 1 }} />;
+  if (!funnel) return null;
+
+  const stages = [
+    { label: 'Total Users', value: funnel.totalUsers, color: GREY },
+    { label: 'Free Users', value: funnel.freeUsers, color: YELLOW, rate: funnel.freeRate },
+    { label: 'Paid Users', value: funnel.paidUsers, color: GREEN, rate: funnel.conversionRate },
+  ];
+
+  return (
+    <Paper sx={{ p: 2, mb: 3, border: `1px solid ${alpha(GREEN, 0.2)}`, bgcolor: alpha(GREEN, 0.03) }}>
+      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>📊 Conversion Funnel</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        {stages.map((s, i) => (
+          <React.Fragment key={s.label}>
+            <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: 1, bgcolor: alpha(s.color, 0.12), border: `1px solid ${alpha(s.color, 0.3)}`, minWidth: 100 }}>
+              <Typography variant="h6" fontWeight={800} sx={{ color: s.color }}>{s.value?.toLocaleString() ?? '—'}</Typography>
+              <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+              {s.rate != null && <Typography variant="caption" sx={{ display: 'block', color: s.color, fontWeight: 700 }}>{s.rate}%</Typography>}
+            </Box>
+            {i < stages.length - 1 && <Typography sx={{ color: 'text.disabled', fontSize: 20 }}>→</Typography>}
+          </React.Fragment>
+        ))}
+        {funnel.new30dUsers != null && (
+          <>
+            <Box sx={{ mx: 1, color: 'text.disabled' }}>|</Box>
+            <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: 1, bgcolor: alpha(GREY, 0.08), border: `1px solid ${alpha(GREY, 0.2)}`, minWidth: 100 }}>
+              <Typography variant="h6" fontWeight={800} color="text.primary">{funnel.new30dUsers?.toLocaleString()}</Typography>
+              <Typography variant="caption" color="text.secondary">New Users (30d)</Typography>
+            </Box>
+            <Typography sx={{ color: 'text.disabled', fontSize: 20 }}>→</Typography>
+            <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: 1, bgcolor: alpha(GREEN, 0.12), border: `1px solid ${alpha(GREEN, 0.3)}`, minWidth: 100 }}>
+              <Typography variant="h6" fontWeight={800} sx={{ color: GREEN }}>{funnel.new30dPaid?.toLocaleString()}</Typography>
+              <Typography variant="caption" color="text.secondary">New Paid (30d)</Typography>
+              {funnel.conversion30d != null && <Typography variant="caption" sx={{ display: 'block', color: GREEN, fontWeight: 700 }}>{funnel.conversion30d}%</Typography>}
+            </Box>
+          </>
+        )}
+      </Box>
+    </Paper>
+  );
+}
+
 function ConversionTab() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -406,6 +464,7 @@ function ConversionTab() {
 
   return (
     <Box>
+      <ConversionFunnelPanel />
       <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>🔄 Drip Sequences</Typography>
       {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
@@ -852,6 +911,7 @@ export default function GrowthCommandCenter() {
           <Tab label="Retention" icon={<Shield />} iconPosition="start" />
           <Tab label="Upsell" icon={<EmojiEvents />} iconPosition="start" />
           <Tab label="Acquisition" icon={<People />} iconPosition="start" />
+          <Tab label="AI Autopilot" icon={<AutoAwesomeIcon />} iconPosition="start" />
         </Tabs>
       </Box>
       <TabPanel value={tab} index={0}><WarRoomTab /></TabPanel>
@@ -859,6 +919,24 @@ export default function GrowthCommandCenter() {
       <TabPanel value={tab} index={2}><RetentionTab /></TabPanel>
       <TabPanel value={tab} index={3}><UpsellTab /></TabPanel>
       <TabPanel value={tab} index={4}><AcquisitionTab /></TabPanel>
+      <TabPanel value={tab} index={5}>
+        <Box sx={{ p: 3 }}>
+          <Typography variant="h5" fontWeight="bold" gutterBottom>
+            🤖 AI Autopilot
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+            AI-powered campaign drafting and weekly growth strategy recommendations.
+          </Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <WeeklyStrategyAdvisor />
+            </Grid>
+            <Grid item xs={12}>
+              <CampaignDrafter />
+            </Grid>
+          </Grid>
+        </Box>
+      </TabPanel>
     </Box>
   );
 }
