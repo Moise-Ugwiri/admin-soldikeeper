@@ -13,3 +13,7 @@ export const getWeeklyStrategy = () => apiClient.get('/admin/growth/autopilot/we
 export const generateReferralCode = () => apiClient.post('/admin/growth/referral/generate');
 export const sendUpsellEmail = (opportunityId) => apiClient.post('/admin/growth/upsell/send-email', { opportunityId });
 export const triggerUpsellScan = () => apiClient.post('/admin/growth/upsell/scan');
+export const draftNotificationAI = (payload) => apiClient.post('/admin/growth/ai/draft-notification', payload);
+export const draftHelpArticleAI = (payload) => apiClient.post('/admin/growth/ai/draft-help-article', payload);
+export const generateTemplateAI = (payload) => apiClient.post('/admin/growth/ai/generate-template', payload);
+export const analyzeSupportTicketAI = (payload) => apiClient.post('/admin/growth/ai/analyze-support-ticket', payload);

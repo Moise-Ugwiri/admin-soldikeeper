@@ -149,6 +149,7 @@ import { useAdminData } from '../../contexts/AdminContext';
 import adminService from '../../services/adminService';
 import { adminGetTickets, adminGetTicket, adminUpdateTicket, adminReply, adminGetStats } from '../../services/supportAPI';
 import GrowthCommandCenter from './GrowthCommandCenter';
+import { AINotificationDrafter, AICampaignDrafter, AIContentDrafter, AITemplateDrafter, AISupportAnalyzer } from './AICommsAssistant';
 
 // ─── Admin Support Panel ────────────────────────────────────────────────────
 const PRIORITY_COLORS = { low: '#6b7280', medium: '#3b82f6', high: '#f59e0b', urgent: '#ef4444' };
@@ -1691,7 +1692,10 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         <TabPanel value={activeTab} index={4}>
           <Box sx={{ px: 3, py: 2 }}>
             <Typography variant="h6" gutterBottom fontWeight={700}>Support Tickets</Typography>
-            <AdminSupportPanel />
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={8}><AdminSupportPanel /></Grid>
+              <Grid item xs={12} md={4}><AISupportAnalyzer /></Grid>
+            </Grid>
           </Box>
         </TabPanel>
 
@@ -2269,6 +2273,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         {/* Templates Tab */}
         <TabPanel value={activeTab} index={6}>
           <Box sx={{ px: 3, py: 2 }}>
+            <AITemplateDrafter onResult={(template) => {/* could open template preview */}} />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6">
                 Content Templates Library
@@ -2462,6 +2467,14 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 3, pt: 2 }}>
+          <AINotificationDrafter onResult={(draft) => setNewNotification(prev => ({
+            ...prev,
+            title: draft.title || prev.title,
+            message: draft.message || prev.message,
+            type: draft.type || prev.type,
+            targetAudience: draft.targetAudience || prev.targetAudience,
+          }))} />
+          <Divider sx={{ my: 2 }}><Chip label="or edit manually" size="small" /></Divider>
           <Grid container spacing={3} sx={{ mt: 0.5 }}>
             <Grid item xs={12}>
               <TextField
@@ -2620,6 +2633,13 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 3, pt: 2 }}>
+          <AICampaignDrafter onResult={(draft) => setNewEmailCampaign(prev => ({
+            ...prev,
+            name: draft.subject || prev.name,
+            subject: draft.subject || prev.subject,
+            content: draft.body || prev.content,
+          }))} />
+          <Divider sx={{ my: 2 }}><Chip label="or edit manually" size="small" /></Divider>
           <Grid container spacing={3} sx={{ mt: 0.5 }}>
             <Grid item xs={12} md={7}>
               <Grid container spacing={3}>
@@ -2837,6 +2857,14 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 3, pt: 2 }}>
+          <AIContentDrafter onResult={(draft) => setNewHelpContent(prev => ({
+            ...prev,
+            title: draft.title || prev.title,
+            content: draft.content || prev.content,
+            category: draft.category || prev.category,
+            tags: draft.tags || prev.tags,
+          }))} />
+          <Divider sx={{ my: 2 }}><Chip label="or edit manually" size="small" /></Divider>
           <Grid container spacing={3} sx={{ mt: 0.5 }}>
             <Grid item xs={12} md={7}>
               <Grid container spacing={3}>
