@@ -862,6 +862,10 @@ export const AdminProvider = ({ children }) => {
       const result = await adminService.createNotification(notification);
       // Refresh notifications list
       fetchNotifications(1);
+      // Surface email delivery errors as a non-fatal warning
+      if (result?.emailDeliveryError) {
+        setError(`Notification saved but email delivery failed: ${result.emailDeliveryError}`);
+      }
       return result;
     } catch (error) {
       setError(error.message);
