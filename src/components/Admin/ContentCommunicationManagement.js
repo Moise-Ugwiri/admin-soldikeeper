@@ -668,6 +668,44 @@ Contact our support team — we're here to help!`,
       icon: '📝'
     },
     {
+      id: 't9', type: 'notification', category: 'Product Launch',
+      title: '📱 SoldiKeeper is now on Google Play!',
+      preview: 'SoldiKeeper is now on the Google Play Store — track your money effortlessly, not exhaustingly.',
+      targetAudience: 'all_users',
+      icon: '📱',
+      actionLabel: '▶ Download on Play Store',
+      actionUrl: 'https://shorturl.at/fVV3J',
+      message: `<p style="font-size:15px;color:#616161;line-height:1.5;margin:0 0 20px;">SoldiKeeper is now on the Google Play Store — a personal finance app that makes tracking your money effortless, not exhausting.</p>
+
+<p style="margin:0 0 20px;">
+  <span style="font-size:13px;font-weight:500;color:#1565c0;background:#e3f2fd;border:1px solid #90caf9;border-radius:100px;padding:5px 14px;display:inline-block;margin:0 6px 6px 0;">Expense tracking</span>
+  <span style="font-size:13px;font-weight:500;color:#1565c0;background:#e3f2fd;border:1px solid #90caf9;border-radius:100px;padding:5px 14px;display:inline-block;margin:0 6px 6px 0;">Smart budgets</span>
+  <span style="font-size:13px;font-weight:500;color:#1565c0;background:#e3f2fd;border:1px solid #90caf9;border-radius:100px;padding:5px 14px;display:inline-block;margin:0 0 6px 0;">Clear insights</span>
+</p>
+
+<table cellpadding="0" cellspacing="0" style="margin:0 0 28px;width:100%;max-width:280px;">
+  <tr><td style="padding:0 0 10px;"><a href="https://shorturl.at/fVV3J" style="display:block;background:#1976d2;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 22px;border-radius:10px;text-align:center;">&#9654; Play Store</a></td></tr>
+  <tr><td><a href="https://www.soldikeeper.com" style="display:block;color:#212121;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;border:1px solid #bdbdbd;text-align:center;">&#127760; soldikeeper.com</a></td></tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td style="height:1px;background:#e0e0e0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+
+<p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#9e9e9e;margin:0 0 10px;">&#127470;&#127481; Versione Italiana</p>
+<h2 style="font-size:20px;font-weight:700;line-height:1.2;letter-spacing:-0.3px;margin:0 0 6px;color:#212121;">I tuoi soldi, finalmente sotto controllo.</h2>
+<p style="font-size:14px;color:#616161;line-height:1.5;margin:0 0 16px;">SoldiKeeper è ora sul Google Play Store — un'app di finanza personale che rende il controllo dei tuoi soldi semplice, non stressante.</p>
+
+<p style="margin:0 0 20px;">
+  <span style="display:block;padding:0 0 7px;font-size:14px;color:#424242;"><span style="color:#1976d2;font-weight:700;">&#10003;</span>&nbsp; Tracciamento spese in pochi secondi</span>
+  <span style="display:block;padding:0 0 7px;font-size:14px;color:#424242;"><span style="color:#1976d2;font-weight:700;">&#10003;</span>&nbsp; Budget che funzionano davvero</span>
+  <span style="display:block;font-size:14px;color:#424242;"><span style="color:#1976d2;font-weight:700;">&#10003;</span>&nbsp; Un quadro chiaro di dove va ogni euro</span>
+</p>
+
+<table cellpadding="0" cellspacing="0" style="margin:0;width:100%;max-width:280px;">
+  <tr><td style="padding:0 0 10px;"><a href="https://shorturl.at/fVV3J" style="display:block;background:#1976d2;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 22px;border-radius:10px;text-align:center;">&#9654; Play Store</a></td></tr>
+  <tr><td><a href="https://www.soldikeeper.com" style="display:block;color:#212121;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px;border:1px solid #bdbdbd;text-align:center;">&#127760; soldikeeper.com</a></td></tr>
+</table>`
+    },
+    {
       id: 't8', type: 'help', category: 'billing',
       title: 'Frequently Asked Questions about SoldiKeeper Premium',
       content: `# SoldiKeeper Premium — FAQ
@@ -711,7 +749,9 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         type: 'system',
         priority: 'medium',
         sendImmediately: true,
-        scheduledTime: null
+        scheduledTime: null,
+        actionLabel: template.actionLabel || 'Open My Dashboard',
+        actionUrl: template.actionUrl || ''
       });
       setNotificationDialogOpen(true);
     } else if (template.type === 'campaign') {
