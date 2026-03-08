@@ -127,7 +127,7 @@ export const exportToPDF = (data, title = 'Export', columns) => {
       <style>body{font-family:Arial,sans-serif;padding:20px}h1{color:#1B5E20}table{border-collapse:collapse;width:100%;font-size:13px}</style>
       </head><body><h1>${title}</h1><p style="color:#666">Generated ${new Date().toLocaleString()} — ${data.length} record(s)</p>
       <table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>
-      <script>window.onload=function(){window.print()}<\/script></body></html>`;
+      <script>window.onload=function(){window.print()}</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
   });

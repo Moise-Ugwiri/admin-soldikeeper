@@ -31,8 +31,6 @@ const PAGE = { w: 210, h: 297, ml: 14, mr: 14 };
 const CONTENT_W = PAGE.w - PAGE.ml - PAGE.mr;  // 182mm usable width
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function rgb(arr) { return { r: arr[0], g: arr[1], b: arr[2] }; }
-
 function setFill(doc, color) { doc.setFillColor(color[0], color[1], color[2]); }
 function setDraw(doc, color) { doc.setDrawColor(color[0], color[1], color[2]); }
 function setTxt(doc, color)  { doc.setTextColor(color[0], color[1], color[2]); }
@@ -390,7 +388,7 @@ export function generateDashboardReport(stats = {}) {
     ['Security Alerts (Active)',    fmt(stats.securityAlerts),          'Requires attention'],
     ['System Health Score',         (stats.systemHealth || 100) + '%',  'Uptime / performance'],
   ];
-  y = addTable(doc, tableHeaders, tableRows, y, {
+  addTable(doc, tableHeaders, tableRows, y, {
     colWidths: [78, 42, 62],
     fontSize: 8,
   });
@@ -526,6 +524,14 @@ export function generateFinancialReport(data = {}) {
     const sKeys = Object.keys(subscriptionData[0]);
     const rows = subscriptionData.map(r => sKeys.map(k => String(r[k] ?? '—')));
     y = addTable(doc, sKeys, rows, y, { fontSize: 7.5 });
+  }
+
+  if (cashFlowData.length > 0) {
+    if (y > 240) { doc.addPage(); y = 40; }
+    y = addSectionHeader(doc, 'Cash Flow', y);
+    const cfKeys = Object.keys(cashFlowData[0]);
+    const cfRows = cashFlowData.map(r => cfKeys.map(k => String(r[k] ?? '—')));
+    addTable(doc, cfKeys, cfRows, y, { fontSize: 7.5 });
   }
 
   const total = doc.getNumberOfPages();
