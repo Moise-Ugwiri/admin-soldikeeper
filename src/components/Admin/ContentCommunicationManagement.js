@@ -149,6 +149,7 @@ import { useAdminData } from '../../contexts/AdminContext';
 import adminService from '../../services/adminService';
 import { adminGetTickets, adminGetTicket, adminUpdateTicket, adminReply, adminGetStats } from '../../services/supportAPI';
 import GrowthCommandCenter from './GrowthCommandCenter';
+import EmailPlayground from './EmailPlayground';
 import { AINotificationDrafter, AICampaignDrafter, AIContentDrafter, AITemplateDrafter, AISupportAnalyzer } from './AICommsAssistant';
 
 // ─── Admin Support Panel ────────────────────────────────────────────────────
@@ -1236,6 +1237,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
             <Tab icon={<ContactSupport />} label="Support" />
             <Tab icon={<Analytics />} label="Analytics" />
             <Tab icon={<Template />} label="Templates" />
+            <Tab icon={<Code />} label="Playground" />
           </Tabs>
         </Box>
 
@@ -2478,6 +2480,23 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
           </DialogActions>
         </Dialog>
       </Card>
+
+      {/* Playground Tab */}
+      <TabPanel value={activeTab} index={7}>
+        <Box sx={{ px: 3, py: 2 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>Email Playground</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Build rich email content visually — add blocks, pick colours, preview live, then copy the HTML or save it as a reusable template.
+          </Typography>
+          <EmailPlayground
+            onSaveAsTemplate={({ name, html }) => {
+              // Inject into BUILT_IN_TEMPLATES at runtime is not trivial; for now just copy HTML
+              // Future: POST to backend template endpoint
+              console.log('Save template:', name, html);
+            }}
+          />
+        </Box>
+      </TabPanel>
 
       {/* Create Notification Dialog */}
       <Dialog
