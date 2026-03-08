@@ -1,14 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import {
   Box, Typography, TextField, Button, IconButton, Tooltip, Divider,
-  Select, MenuItem, FormControl, InputLabel, Chip, Paper, Stack,
+  Select, MenuItem, FormControl, InputLabel, Chip, Paper,
   Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
   ToggleButtonGroup, ToggleButton, Slider
 } from '@mui/material';
 import {
-  FormatBold, FormatItalic, FormatListBulleted, Link, Image,
-  ContentCopy, Code, Preview, Add, Delete, ArrowUpward, ArrowDownward,
-  Save, Send, SmartButton
+  ContentCopy, Code, Preview, Delete, ArrowUpward, ArrowDownward,
+  Save, SmartButton
 } from '@mui/icons-material';
 
 // ─── Platform palette ────────────────────────────────────────────────────────
