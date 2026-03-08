@@ -60,12 +60,12 @@ const blockToHtml = (block) => {
       return `<p style="font-size:${block.size}px;color:${block.color};line-height:1.7;margin:0 0 16px;">${block.text.replace(/\n/g, '<br/>')}</p>`;
     case 'button':
       if (block.fullWidth) {
-        return `<table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;max-width:320px;">
+        return `<table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;">
   <tr><td><a href="${block.url}" style="display:block;background:${block.bgColor};color:${block.textColor};text-decoration:none;font-weight:600;font-size:14px;padding:13px 22px;border-radius:10px;text-align:center;">${block.text}</a></td></tr>
 </table>`;
       }
-      return `<table cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
-  <tr><td><a href="${block.url}" style="display:inline-block;background:${block.bgColor};color:${block.textColor};text-decoration:none;font-weight:600;font-size:14px;padding:11px 22px;border-radius:10px;">${block.text}</a></td></tr>
+      return `<table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;">
+  <tr><td><a href="${block.url}" style="display:block;background:${block.bgColor};color:${block.textColor};text-decoration:none;font-weight:600;font-size:14px;padding:11px 22px;border-radius:10px;text-align:center;">${block.text}</a></td></tr>
 </table>`;
     case 'pill':
       return `<p style="margin:0 0 16px;"><span style="display:inline-block;font-size:13px;font-weight:500;color:${block.textColor};background:${block.bgColor};border:1px solid ${block.borderColor};border-radius:100px;padding:5px 14px;">${block.text}</span></p>`;
@@ -77,13 +77,56 @@ const blockToHtml = (block) => {
       return `<div style="height:${block.height}px;font-size:0;line-height:0;">&nbsp;</div>`;
     case 'image':
       if (!block.url) return '';
-      return `<p style="margin:0 0 16px;"><img src="${block.url}" alt="${block.alt}" style="max-width:${block.maxWidth};height:auto;display:block;border-radius:8px;" /></p>`;
+      // max-width !important ensures mobile email clients respect the constraint
+      return `<p style="margin:0 0 16px;"><img src="${block.url}" alt="${block.alt}" style="max-width:${block.maxWidth};width:100%;height:auto;display:block;border-radius:8px;" /></p>`;
     default:
       return '';
   }
 };
 
-const blocksToHtml = (blocks) => blocks.map(blockToHtml).join('\n');
+// Wraps blocks in a mobile-first responsive container.
+// Email-safe: table-based outer shell, 100% width, max-width 600px centered.
+const blocksToHtml = (blocks) => {
+  const inner = blocks.map(blockToHtml).join('\n');
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      <table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;">
+        <tr>
+          <td style="padding:0 4px;">
+${inner}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`;
+};
+
+// Full standalone HTML page with viewport meta — for web/copy-paste use.
+const blocksToFullHtml = (blocks) => {
+  const body = blocksToHtml(blocks);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoldiKeeper Message</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; background: #f5f5f5; }
+    img { max-width: 100% !important; height: auto !important; }
+    a { word-break: break-word; }
+    @media (max-width: 480px) {
+      td { padding-left: 8px !important; padding-right: 8px !important; }
+    }
+  </style>
+</head>
+<body>
+${body}
+</body>
+</html>`;
+};
 
 // ─── Colour swatch picker ─────────────────────────────────────────────────────
 const ColorSwatch = ({ value, onChange, label }) => (
@@ -230,6 +273,7 @@ const EmailPlayground = ({ onSaveAsTemplate }) => {
   const [templateName, setTemplateName] = useState('');
 
   const html = blocksToHtml(blocks);
+  const fullHtml = blocksToFullHtml(blocks);
 
   const addBlock = (type) => {
     const nb = makeBlock(type);
@@ -260,7 +304,13 @@ const EmailPlayground = ({ onSaveAsTemplate }) => {
 
   const copyHtml = () => {
     navigator.clipboard.writeText(html).then(() =>
-      setSnack({ open: true, msg: 'HTML copied to clipboard!', severity: 'success' })
+      setSnack({ open: true, msg: 'Email snippet copied!', severity: 'success' })
+    );
+  };
+
+  const copyFullHtml = () => {
+    navigator.clipboard.writeText(fullHtml).then(() =>
+      setSnack({ open: true, msg: 'Full HTML page copied (mobile-optimized)!', severity: 'success' })
     );
   };
 
@@ -296,7 +346,8 @@ const EmailPlayground = ({ onSaveAsTemplate }) => {
 
           <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
 
-          <Button size="small" variant="outlined" startIcon={<ContentCopy />} onClick={copyHtml}>Copy HTML</Button>
+          <Button size="small" variant="outlined" startIcon={<ContentCopy />} onClick={copyHtml}>Copy Snippet</Button>
+          <Button size="small" variant="outlined" startIcon={<ContentCopy />} onClick={copyFullHtml} color="secondary">Copy Full Page</Button>
           <Button size="small" variant="contained" startIcon={<Save />} onClick={() => setSaveDialog(true)}>Save as Template</Button>
         </Box>
       </Paper>
@@ -349,12 +400,15 @@ const EmailPlayground = ({ onSaveAsTemplate }) => {
         <Paper elevation={0} sx={{ flex: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'auto', p: 2 }}>
           {view === 'code' ? (
             <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="subtitle2" fontWeight={700}>Generated HTML</Typography>
-                <Button size="small" startIcon={<ContentCopy />} onClick={copyHtml}>Copy</Button>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="subtitle2" fontWeight={700}>Generated HTML <Chip label="mobile-optimized" size="small" color="success" sx={{ ml: 1, height: 18, fontSize: '0.65rem' }} /></Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" startIcon={<ContentCopy />} onClick={copyHtml}>Snippet</Button>
+                  <Button size="small" variant="contained" startIcon={<ContentCopy />} onClick={copyFullHtml}>Full Page</Button>
+                </Box>
               </Box>
               <TextField
-                fullWidth multiline value={html} InputProps={{ readOnly: true }}
+                fullWidth multiline value={fullHtml} InputProps={{ readOnly: true }}
                 minRows={20}
                 sx={{ fontFamily: 'monospace', fontSize: 12,
                   '& textarea': { fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5 } }}
