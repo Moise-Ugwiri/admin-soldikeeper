@@ -10,7 +10,7 @@ import { Add, Edit, Delete, TrendingUp, Assessment } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import axios from 'axios';
+import apiClient from '../../services/api';
 
 const CostManagement = () => {
   const [costs, setCosts] = useState([]);
@@ -39,12 +39,7 @@ const CostManagement = () => {
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/admin/costs', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiClient.get('/admin/costs');
       
       if (response.data.success) {
         setCosts(response.data.data.costs);
@@ -68,16 +63,11 @@ const CostManagement = () => {
         return;
       }
 
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': `Bearer ${token}`
-      };
-
       if (editingCost) {
-        await axios.put(`/api/admin/costs/${editingCost._id}`, formData, { headers });
+        await apiClient.put(`/admin/costs/${editingCost._id}`, formData);
         setSuccess('Cost entry updated successfully');
       } else {
-        await axios.post('/api/admin/costs', formData, { headers });
+        await apiClient.post('/admin/costs', formData);
         setSuccess('Cost entry created successfully');
       }
       
@@ -97,12 +87,7 @@ const CostManagement = () => {
     if (window.confirm('Are you sure you want to delete this cost entry?')) {
       try {
         setError('');
-        const token = localStorage.getItem('token');
-        await axios.delete(`/api/admin/costs/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        await apiClient.delete(`/admin/costs/${id}`);
         setSuccess('Cost entry deleted successfully');
         fetchCosts();
         
