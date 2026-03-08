@@ -225,8 +225,21 @@ const AdvancedAnalytics = () => {
     a.click();
   };
 
+  const handleExportPDF = async () => {
+    try {
+      const { downloadReport } = await import('../../utils/pdfReportGenerator');
+      downloadReport('analytics', {
+        stats: adminStats || {},
+        tableData: Object.entries(adminStats || {}).map(([k, v]) => ({ Metric: k, Value: String(v) })),
+        reportType: 'Advanced Analytics',
+        dateRange,
+      });
+    } catch (err) {
+      console.error('Advanced Analytics PDF export failed:', err);
+    }
+  };
+
   const handleExportJSON = () => {
-    const jsonData = JSON.stringify({ adminStats, analytics }, null, 2);
     const blob = new Blob([jsonData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -922,7 +935,7 @@ const AdvancedAnalytics = () => {
                     <Button
                       variant="outlined"
                       startIcon={<Download />}
-                      onClick={() => exportData && exportData('analytics', 'pdf')}
+                      onClick={() => handleExportPDF()}
                     >
                       Export PDF
                     </Button>

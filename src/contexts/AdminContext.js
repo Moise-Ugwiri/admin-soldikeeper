@@ -1251,8 +1251,37 @@ export const AdminProvider = ({ children }) => {
 
   // Export data
   const exportData = useCallback(async (type, format = 'csv') => {
+    // For PDF, always use client-side jsPDF generator (server doesn't produce PDF blobs)
+    if (format === 'pdf') {
+      try {
+        const { downloadReport } = await import('../utils/pdfReportGenerator');
+        switch (type) {
+          case 'dashboard':
+            downloadReport('dashboard', { stats: state.adminStats || {} });
+            break;
+          case 'users':
+            downloadReport('users', { users: state.users || [] });
+            break;
+          case 'transactions':
+            downloadReport('transactions', { transactions: state.transactions || [] });
+            break;
+          case 'activity-logs':
+            downloadReport('activity-logs', { logs: state.activityLogs || [] });
+            break;
+          case 'compliance':
+            downloadReport('compliance', state.complianceData || {});
+            break;
+          default:
+            downloadReport(type, { stats: state.adminStats || {}, tableData: [{ ...(state.adminStats || {}) }], reportType: type });
+        }
+      } catch (err) {
+        setError('PDF generation failed: ' + (err.message || 'Unknown error'));
+      }
+      return;
+    }
+
     try {
-      // Try server-side export first
+      // Try server-side export for CSV/Excel
       const blob = await adminService.exportData(type, format);
       
       // Create download link
@@ -1267,7 +1296,7 @@ export const AdminProvider = ({ children }) => {
     } catch (error) {
       // Fallback to client-side export using in-memory data
       try {
-        const { exportToCSV, exportToExcel, exportToPDF, flattenUser, flattenTransaction } = await import('../utils/exportUtils');
+        const { exportToCSV, exportToExcel, flattenUser, flattenTransaction } = await import('../utils/exportUtils');
 
         let data = [];
         const filename = type;
@@ -1298,9 +1327,6 @@ export const AdminProvider = ({ children }) => {
         }
 
         switch (format) {
-          case 'pdf':
-            exportToPDF(data, `${type} Export`);
-            break;
           case 'excel':
           case 'xlsx':
             exportToExcel(data, filename);

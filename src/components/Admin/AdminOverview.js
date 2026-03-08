@@ -92,7 +92,8 @@ import {
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { useAdminData } from '../../contexts/AdminContext';
-import { exportToCSV, exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { exportToCSV, exportToExcel } from '../../utils/exportUtils';
+import { downloadReport } from '../../utils/pdfReportGenerator';
 import websocketService from '../../services/websocketService';
 
 const AdminOverview = () => {
@@ -415,7 +416,11 @@ const AdminOverview = () => {
         }];
 
         if (exportFormat === 'pdf') {
-          exportToPDF(dashboardRows, 'Dashboard Overview');
+          downloadReport('dashboard', { stats: adminStats || {} });
+          setSnackbar({ open: true, message: 'Dashboard PDF report generated!', severity: 'success' });
+          setExportDialog(false);
+          setExportInProgress(false);
+          return;
         } else if (exportFormat === 'xlsx') {
           exportToExcel(dashboardRows, 'dashboard_export');
         } else {
@@ -443,28 +448,12 @@ const AdminOverview = () => {
 
   const handleGenerateReport = async () => {
     try {
-      // Generate and download report
-      await exportData(reportType, 'pdf');
+      // Generate branded PDF report directly via jsPDF
+      downloadReport(reportType, { stats: adminStats || {} });
       setSnackbar({ open: true, message: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated!`, severity: 'success' });
       setReportDialog(false);
     } catch (error) {
-      // Server report generation failed — fall back to local PDF
-      try {
-        const reportRows = [{
-          'Report Type': reportType,
-          'Total Users': adminStats?.totalUsers ?? 0,
-          'Active Users': adminStats?.activeUsers ?? 0,
-          'Total Transactions': adminStats?.totalTransactions ?? 0,
-          'Total Income': adminStats?.totalUserIncome ?? 0,
-          'Total Expenses': adminStats?.totalUserExpenses ?? 0,
-          'Generated At': new Date().toLocaleString()
-        }];
-        exportToPDF(reportRows, `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`);
-        setSnackbar({ open: true, message: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated locally!`, severity: 'success' });
-        setReportDialog(false);
-      } catch (fallbackErr) {
-        setSnackbar({ open: true, message: 'Failed to generate report', severity: 'error' });
-      }
+      setSnackbar({ open: true, message: 'Failed to generate report: ' + (error.message || ''), severity: 'error' });
     }
   };
 

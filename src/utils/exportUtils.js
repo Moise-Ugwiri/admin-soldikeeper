@@ -93,10 +93,10 @@ export const exportToExcel = (data, filename = 'export', columns) => {
 };
 
 /**
- * Simple PDF-style export: opens a printable window with the data rendered as
- * an HTML table so the user can print/save to PDF via the browser dialog.
+ * Exports an array of objects as a downloadable PDF using jsPDF.
+ * Generates a clean, branded table-style report without opening a print dialog.
  * @param {Array<Object>} data - Data rows
- * @param {string} [title='Export'] - Title shown at the top of the printable page
+ * @param {string} [title='Export'] - Report title
  * @param {string[]} [columns] - Optional column ordering
  */
 export const exportToPDF = (data, title = 'Export', columns) => {
@@ -105,46 +105,32 @@ export const exportToPDF = (data, title = 'Export', columns) => {
     return;
   }
 
-  const headers = columns || Object.keys(data[0]);
-  const headerCells = headers.map((h) => `<th style="border:1px solid #ddd;padding:8px;background:#f4f4f4;text-align:left">${h}</th>`).join('');
-  const bodyRows = data
-    .map(
-      (row) =>
-        '<tr>' +
-        headers.map((h) => `<td style="border:1px solid #ddd;padding:8px">${row[h] ?? ''}</td>`).join('') +
-        '</tr>'
-    )
-    .join('');
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${title}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { margin-bottom: 4px; }
-        p { color: #666; margin-bottom: 16px; }
-        table { border-collapse: collapse; width: 100%; font-size: 13px; }
-      </style>
-    </head>
-    <body>
-      <h1>${title}</h1>
-      <p>Generated on ${new Date().toLocaleString()} — ${data.length} record(s)</p>
-      <table>
-        <thead><tr>${headerCells}</tr></thead>
-        <tbody>${bodyRows}</tbody>
-      </table>
-      <script>window.onload = function() { window.print(); }</script>
-    </body>
-    </html>
-  `;
-
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-  }
+  // Lazy-import the generator to keep bundle splitting working
+  import('./pdfReportGenerator').then(({ generateAnalyticsReport, savePDF }) => {
+    const doc = generateAnalyticsReport({
+      reportType: title,
+      tableData: data,
+      stats: {},
+    });
+    savePDF(doc, title.toLowerCase().replace(/\s+/g, '_'));
+  }).catch(err => {
+    console.error('PDF generation failed, falling back to print window:', err);
+    // Fallback: print window
+    const headers = columns || Object.keys(data[0]);
+    const headerCells = headers.map((h) => `<th style="border:1px solid #ddd;padding:8px;background:#1B5E20;color:#fff;text-align:left">${h}</th>`).join('');
+    const bodyRows = data.map((row, i) =>
+      `<tr style="background:${i%2===0?'#f9f9f9':'#fff'}">` +
+      headers.map((h) => `<td style="border:1px solid #ddd;padding:8px">${row[h] ?? ''}</td>`).join('') +
+      '</tr>'
+    ).join('');
+    const html = `<!DOCTYPE html><html><head><title>${title}</title>
+      <style>body{font-family:Arial,sans-serif;padding:20px}h1{color:#1B5E20}table{border-collapse:collapse;width:100%;font-size:13px}</style>
+      </head><body><h1>${title}</h1><p style="color:#666">Generated ${new Date().toLocaleString()} — ${data.length} record(s)</p>
+      <table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>
+      <script>window.onload=function(){window.print()}<\/script></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  });
 };
 
 /**

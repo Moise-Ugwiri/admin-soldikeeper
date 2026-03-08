@@ -200,12 +200,19 @@ const ComplianceAudit = () => {
     }
   };
 
-  // Handle export
+  // Handle export — PDF report with compliance data
   const handleExport = async () => {
-    if (exportData) {
-      await exportData('compliance', 'csv');
-    } else if (exportAuditLog) {
-      await exportAuditLog();
+    try {
+      const { downloadReport } = await import('../../utils/pdfReportGenerator');
+      downloadReport('compliance', {
+        auditLogs: complianceData?.auditLogs || [],
+        complianceScore: complianceData?.complianceScore || 0,
+        gdprStatus: complianceData?.gdprStatus || {},
+        securitySummary: complianceData?.securitySummary || {},
+      });
+    } catch (err) {
+      console.error('Compliance PDF export failed:', err);
+      if (exportData) await exportData('compliance', 'csv');
     }
   };
 
@@ -531,7 +538,7 @@ const ComplianceAudit = () => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     {t('admin.compliance.reports.auditDescription')}
                   </Typography>
-                  <Button variant="contained" startIcon={<Download />}>
+                  <Button variant="contained" startIcon={<Download />} onClick={handleExport}>
                     {t('admin.compliance.reports.downloadAudit')}
                   </Button>
                 </CardContent>
@@ -546,7 +553,7 @@ const ComplianceAudit = () => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     {t('admin.compliance.reports.gdprDescription')}
                   </Typography>
-                  <Button variant="contained" startIcon={<Download />}>
+                  <Button variant="contained" startIcon={<Download />} onClick={handleExport}>
                     {t('admin.compliance.reports.downloadGdpr')}
                   </Button>
                 </CardContent>

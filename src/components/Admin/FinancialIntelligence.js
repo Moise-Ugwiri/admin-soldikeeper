@@ -85,53 +85,28 @@ const FinancialIntelligence = () => {
 
   const handleExport = async () => {
     try {
-      const { exportToCSV, exportToPDF } = await import('../../utils/exportUtils');
-
-      // Build export data from all available financial data
-      const exportRows = [];
-
-      // Add KPI metrics
-      if (kpiMetrics.length > 0) {
-        kpiMetrics.forEach(metric => exportRows.push({ section: 'KPI', ...metric }));
-      }
-
-      // Add revenue data
-      if (revenueData.length > 0) {
-        revenueData.forEach(row => exportRows.push({ section: 'Revenue', ...row }));
-      }
-
-      // Add subscription data
-      if (subscriptionData.length > 0) {
-        subscriptionData.forEach(row => exportRows.push({ section: 'Subscriptions', ...row }));
-      }
-
-      // Add cash flow data
-      if (cashFlowData.length > 0) {
-        cashFlowData.forEach(row => exportRows.push({ section: 'Cash Flow', ...row }));
-      }
-
-      // Add top categories
-      if (topCategories.length > 0) {
-        topCategories.forEach(row => exportRows.push({ section: 'Top Categories', ...row }));
-      }
-
-      if (exportRows.length > 0) {
-        exportToCSV(exportRows, 'financial_intelligence');
-      } else {
-        // Export summary if no detailed data
-        const summaryData = {
-          dateRange,
-          totalRevenue: summary?.totalRevenue || 0,
-          mrr: summary?.mrr || 0,
-          arr: summary?.arr || 0,
-          avgRevenuePerUser: summary?.avgRevenuePerUser || 0,
-          churnRate: summary?.churnRate || 0,
-          exportedAt: new Date().toISOString()
-        };
-        exportToCSV([summaryData], 'financial_intelligence');
-      }
+      const { downloadReport } = await import('../../utils/pdfReportGenerator');
+      downloadReport('financial', {
+        summary,
+        kpiMetrics,
+        revenueData,
+        subscriptionData,
+        cashFlowData,
+        dateRange,
+      });
     } catch (err) {
-      console.error('Financial export failed:', err);
+      console.error('Financial PDF export failed:', err);
+      // CSV fallback
+      try {
+        const { exportToCSV } = await import('../../utils/exportUtils');
+        const exportRows = [
+          ...kpiMetrics.map(m => ({ section: 'KPI', ...m })),
+          ...revenueData.map(r => ({ section: 'Revenue', ...r })),
+          ...subscriptionData.map(s => ({ section: 'Subscriptions', ...s })),
+          ...cashFlowData.map(c => ({ section: 'Cash Flow', ...c })),
+        ];
+        exportToCSV(exportRows.length > 0 ? exportRows : [{ ...summary, dateRange, exportedAt: new Date().toISOString() }], 'financial_intelligence');
+      } catch(csvErr) { console.error('CSV fallback failed:', csvErr); }
     }
   };
 

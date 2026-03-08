@@ -52,7 +52,7 @@ import {
 } from 'recharts';
 import { useAdminData } from '../../contexts/AdminContext';
 import TouchEnabledChart from './shared/TouchEnabledChart';
-import { exportToCSV, exportToPDF } from '../../utils/exportUtils';
+import { exportToCSV } from '../../utils/exportUtils';
 
 const SystemAnalytics = () => {
   const theme = useTheme();
@@ -168,24 +168,24 @@ const SystemAnalytics = () => {
   // Handle export — try server-side first, fall back to client-side
   const handleExport = async () => {
     try {
-      if (exportData) {
-        await exportData('analytics', 'pdf');
-      } else {
-        throw new Error('exportData not available');
-      }
-    } catch {
-      // Server export unavailable — build a summary from loaded analytics/stats
-      const rows = [{
-        'Report': 'System Analytics',
-        'Date Range': getDateRangeLabel(),
-        'Total Users': adminStats?.totalUsers ?? 0,
-        'Active Users': adminStats?.activeUsers ?? 0,
-        'Total Transactions': adminStats?.totalTransactions ?? 0,
-        'Total Income': adminStats?.totalUserIncome ?? 0,
-        'Total Expenses': adminStats?.totalUserExpenses ?? 0,
-        'Generated At': new Date().toLocaleString()
-      }];
-      exportToPDF(rows, 'System Analytics Report');
+      const { downloadReport } = await import('../../utils/pdfReportGenerator');
+      downloadReport('analytics', {
+        stats: adminStats || {},
+        tableData: [{
+          'Date Range': getDateRangeLabel(),
+          'Total Users': adminStats?.totalUsers ?? 0,
+          'Active Users': adminStats?.activeUsers ?? 0,
+          'New Users': adminStats?.newUsers ?? 0,
+          'Total Transactions': adminStats?.totalTransactions ?? 0,
+          'Total Income': adminStats?.totalUserIncome ?? 0,
+          'Total Expenses': adminStats?.totalUserExpenses ?? 0,
+          'Net Balance': (adminStats?.totalUserIncome || 0) - (adminStats?.totalUserExpenses || 0),
+        }],
+        reportType: 'System Analytics',
+        dateRange: getDateRangeLabel(),
+      });
+    } catch (err) {
+      console.error('Analytics PDF export failed:', err);
     }
   };
 
