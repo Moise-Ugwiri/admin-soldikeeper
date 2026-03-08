@@ -520,7 +520,9 @@ const ContentCommunicationManagement = () => {
     type: 'system',
     targetAudience: 'all_users',
     sendImmediately: true,
-    scheduledTime: null
+    scheduledTime: null,
+    actionLabel: 'Open My Dashboard',
+    actionUrl: 'https://www.soldikeeper.com/dashboard'
   });
 
   const [newEmailCampaign, setNewEmailCampaign] = useState({
@@ -815,7 +817,9 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         type: 'system',
         targetAudience: 'all_users',
         sendImmediately: true,
-        scheduledTime: null
+        scheduledTime: null,
+        actionLabel: 'Open My Dashboard',
+        actionUrl: 'https://www.soldikeeper.com/dashboard'
       });
       fetchNotifications(1); // Refresh the list
     } catch (error) {
@@ -2493,18 +2497,49 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Message"
+                label="Message / HTML Body"
                 variant="outlined"
                 multiline
-                rows={3}
+                rows={8}
                 value={newNotification.message}
                 onChange={(e) => setNewNotification({ ...newNotification, message: e.target.value })}
                 required
-                helperText="Explain what happened or what the user should do"
+                inputProps={{ style: { fontFamily: 'monospace', fontSize: 13 } }}
+                helperText="Plain text or raw HTML/CSS — rendered as-is in the email body"
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', textAlign: 'right' }}>
-                {newNotification.message.length}/500
+              <Typography variant="caption" color={newNotification.message.length > 2400 ? 'error' : 'text.secondary'} sx={{ mt: 0.5, display: 'block', textAlign: 'right' }}>
+                {newNotification.message.length}/2500
               </Typography>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
+                Call-to-Action Button
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={5}>
+                  <TextField
+                    fullWidth
+                    label="Button Label"
+                    variant="outlined"
+                    value={newNotification.actionLabel}
+                    onChange={(e) => setNewNotification({ ...newNotification, actionLabel: e.target.value })}
+                    placeholder="Open My Dashboard"
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={7}>
+                  <TextField
+                    fullWidth
+                    label="Button URL"
+                    variant="outlined"
+                    value={newNotification.actionUrl}
+                    onChange={(e) => setNewNotification({ ...newNotification, actionUrl: e.target.value })}
+                    placeholder="https://www.soldikeeper.com/dashboard"
+                    size="small"
+                  />
+                </Grid>
+              </Grid>
             </Grid>
             
             <Grid item xs={12}>
