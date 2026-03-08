@@ -2507,8 +2507,8 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
                 inputProps={{ style: { fontFamily: 'monospace', fontSize: 13 } }}
                 helperText="Plain text or raw HTML/CSS — rendered as-is in the email body"
               />
-              <Typography variant="caption" color={newNotification.message.length > 2400 ? 'error' : 'text.secondary'} sx={{ mt: 0.5, display: 'block', textAlign: 'right' }}>
-                {newNotification.message.length}/2500
+              <Typography variant="caption" color={newNotification.message.length > 9800 ? 'error' : 'text.secondary'} sx={{ mt: 0.5, display: 'block', textAlign: 'right' }}>
+                {newNotification.message.length}/10000
               </Typography>
             </Grid>
 
