@@ -41,6 +41,10 @@ import EscalationHub from './EscalationHub';
 import { AGENTS as STATIC_AGENTS, getSystemStatus } from '../../../data/agentRegistry';
 import TaskQueue from './TaskQueue';
 import AgentInterface from './AgentInterface';
+import SystemHealthPanel from './SystemHealthPanel';
+import ReasoningTracePanel from './ReasoningTracePanel';
+import GoalDashboard from './GoalDashboard';
+import CollaborationViewer from './CollaborationViewer';
 
 // Main Command Center Component
 /**
@@ -382,6 +386,26 @@ const AIAgentCommandCenter = () => {
 
       {/* Escalation Hub - Enhanced Manual Escalation UI */}
       <EscalationHub />
+
+      {/* Reasoning Traces — Live OODA Loop Viewer */}
+      <Box sx={{ mt: 3 }}>
+        <ReasoningTracePanel socket={socket} />
+      </Box>
+
+      {/* Goal Dashboard — Agent Goal Tracking & Management */}
+      <Box sx={{ mt: 3 }}>
+        <GoalDashboard />
+      </Box>
+
+      {/* Collaboration Sessions — Multi-Agent Collaboration Viewer */}
+      <Box sx={{ mt: 3 }}>
+        <CollaborationViewer />
+      </Box>
+
+      {/* System Health — Circuit Breakers, LLM Costs, Dead Letter Queue */}
+      <Box sx={{ mt: 3 }}>
+        <SystemHealthPanel />
+      </Box>
 
       {/* Agent Interface Drawer */}
       <AgentInterface
