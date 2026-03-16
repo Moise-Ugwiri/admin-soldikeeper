@@ -445,7 +445,7 @@ const AIAgentCommandCenter = () => {
           }} />
         </Box>
 
-        <AgentGrid onAgentClick={handleAgentClick} agents={agents} />
+        <AgentGrid onSelectAgent={handleAgentClick} agents={agents} selectedAgent={selectedAgent} />
       </Paper>
 
 
