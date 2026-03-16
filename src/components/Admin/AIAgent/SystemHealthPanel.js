@@ -14,7 +14,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   LinearProgress, Alert, Collapse, Divider, Grid, Card, CardContent,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  useTheme, alpha, CircularProgress, Skeleton
+  useTheme, alpha, CircularProgress
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -30,6 +30,49 @@ import {
   ExpandLess as CollapseIcon
 } from '@mui/icons-material';
 import apiClient from '../../../services/api';
+import { getAgent } from '../../../data/agentRegistry';
+
+// ─── Dark Theme Palette ────────────────────────────────────────────────
+const DK = {
+  bg:         '#0d1117',
+  surface:    '#161b22',
+  surfaceAlt: '#21262d',
+  border:     '#30363d',
+  text:       '#e6edf3',
+  textMuted:  '#8b949e',
+  accent:     '#10b981',
+};
+
+// ─── Personality-Driven Health Narratives ───────────────────────────────
+const getHealthNarrative = (breakerList, budgetPct, pendingCount) => {
+  const openBreakers = breakerList.filter(b => b.state === 'open').length;
+  const halfOpen     = breakerList.filter(b => b.state === 'half-open').length;
+
+  if (openBreakers > 0 && pendingCount > 3 && budgetPct >= 80) {
+    return { emoji: '🔴', text: 'Multiple systems under stress — breakers tripped, queue backing up, budget running hot.', severity: 'error' };
+  }
+  if (openBreakers > 0) {
+    return { emoji: '🟠', text: `${openBreakers} circuit breaker${openBreakers > 1 ? 's' : ''} tripped open. Services may be degraded — investigating.`, severity: 'warning' };
+  }
+  if (pendingCount > 5) {
+    return { emoji: '🟡', text: `Dead letter queue growing (${pendingCount} pending). Some tasks need attention.`, severity: 'warning' };
+  }
+  if (budgetPct >= 90) {
+    return { emoji: '💰', text: 'LLM budget nearly exhausted. Agents may throttle autonomous actions.', severity: 'warning' };
+  }
+  if (halfOpen > 0) {
+    return { emoji: '🔄', text: `${halfOpen} breaker${halfOpen > 1 ? 's' : ''} in half-open recovery. Systems self-healing.`, severity: 'info' };
+  }
+  if (budgetPct >= 50) {
+    return { emoji: '📊', text: 'All systems nominal. Budget usage moderate — agents operating efficiently.', severity: 'success' };
+  }
+  return { emoji: '✅', text: 'All agents operating nominally. Breakers closed, queue clear, budget healthy.', severity: 'success' };
+};
+
+const getAgentColor = (agentId) => {
+  const agent = getAgent(agentId);
+  return agent?.color || DK.accent;
+};
 
 // ─── helpers ───────────────────────────────────────────────────────────
 const REFRESH_INTERVAL = 15_000; // 15 s
@@ -181,28 +224,75 @@ const SystemHealthPanel = () => {
     .sort((a, b) => b.cost - a.cost);
 
   // ── section style helper ───────────────────────────────────────────
-  const sectionPaper = (gradient) => ({
+  const sectionPaper = (accentColor) => ({
     p: { xs: 2, md: 3 },
     borderRadius: 3,
-    background: `linear-gradient(135deg, ${alpha(gradient, 0.04)} 0%, ${alpha(theme.palette.background.paper, 1)} 100%)`,
+    background: `linear-gradient(135deg, ${DK.surface} 0%, ${DK.bg} 100%)`,
+    border: `1px solid ${DK.border}`,
+    '& .MuiTableCell-root': { borderColor: DK.border, color: DK.text },
+    '& .MuiTableCell-head': { color: DK.textMuted, fontWeight: 700 },
+    '& .MuiTypography-root': { color: DK.text },
+    '& .MuiAlert-root': { bgcolor: alpha(accentColor, 0.06), borderColor: alpha(accentColor, 0.2) },
   });
 
   // ─── RENDER ────────────────────────────────────────────────────────
+  const narrative = getHealthNarrative(breakerList, budgetPct, pendingCount);
+
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-          🏥 System Health
-        </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<RefreshIcon />}
-          onClick={fetchAll}
+      {/* ── Health Narrative Banner ─────────────────────────────────── */}
+      <Box
+        sx={{
+          mb: 3,
+          p: 2.5,
+          borderRadius: 3,
+          background: `linear-gradient(135deg, ${DK.bg} 0%, ${DK.surface} 100%)`,
+          border: `1px solid ${DK.border}`,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 800, color: DK.text, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            🏥 System Health
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<RefreshIcon />}
+            onClick={fetchAll}
+            sx={{
+              borderColor: DK.border,
+              color: DK.textMuted,
+              '&:hover': { borderColor: DK.accent, color: DK.accent },
+            }}
+          >
+            Refresh All
+          </Button>
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            px: 2,
+            py: 1.5,
+            borderRadius: 2,
+            bgcolor: narrative.severity === 'error'   ? 'rgba(248,81,73,0.08)'
+                   : narrative.severity === 'warning' ? 'rgba(210,153,34,0.08)'
+                   : narrative.severity === 'info'    ? 'rgba(56,139,253,0.08)'
+                   : 'rgba(16,185,129,0.08)',
+            border: `1px solid ${
+              narrative.severity === 'error'   ? 'rgba(248,81,73,0.25)'
+            : narrative.severity === 'warning' ? 'rgba(210,153,34,0.25)'
+            : narrative.severity === 'info'    ? 'rgba(56,139,253,0.25)'
+            : 'rgba(16,185,129,0.25)'
+            }`,
+          }}
         >
-          Refresh All
-        </Button>
+          <Typography sx={{ fontSize: '1.4rem', lineHeight: 1 }}>{narrative.emoji}</Typography>
+          <Typography variant="body1" sx={{ color: DK.text, fontWeight: 500 }}>
+            {narrative.text}
+          </Typography>
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
@@ -210,31 +300,41 @@ const SystemHealthPanel = () => {
         <Grid item xs={12} md={6}>
           <Paper elevation={2} sx={sectionPaper(theme.palette.info.main)}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <BreakerIcon color="info" />
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <BreakerIcon sx={{ color: '#388bfd' }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, color: DK.text }}>
                 Circuit Breakers
               </Typography>
               <Chip
                 label={breakerList.length ? `${breakerList.length} registered` : 'none'}
                 size="small"
                 variant="outlined"
+                sx={{ borderColor: DK.border, color: DK.textMuted }}
               />
             </Box>
 
             {breakersLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress size={28} />
+                <CircularProgress size={28} sx={{ color: DK.accent }} />
               </Box>
             ) : breakersError ? (
-              <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
+              <Alert severity="info" variant="outlined" sx={{ borderRadius: 2, bgcolor: alpha('#388bfd', 0.06) }}>
                 {breakersError}
               </Alert>
             ) : breakerList.length === 0 ? (
-              <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
-                No circuit breakers registered yet. They are created on first use.
+              <Alert severity="info" variant="outlined" icon={false} sx={{ borderRadius: 2, bgcolor: alpha('#388bfd', 0.06) }}>
+                <Typography variant="body2" sx={{ color: DK.textMuted }}>
+                  🔌 No circuit breakers registered yet. They are created on first use.
+                </Typography>
               </Alert>
             ) : (
-              <TableContainer>
+              <>
+                {/* Breaker narrative */}
+                {breakerList.every(b => b.state === 'closed') && (
+                  <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic', color: DK.textMuted }}>
+                    🟢 All {breakerList.length} breakers holding steady — services flowing smoothly.
+                  </Typography>
+                )}
+                <TableContainer>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -279,6 +379,7 @@ const SystemHealthPanel = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
+              </>
             )}
           </Paper>
         </Grid>
@@ -287,9 +388,9 @@ const SystemHealthPanel = () => {
         <Grid item xs={12} md={6}>
           <Paper elevation={2} sx={sectionPaper(theme.palette.warning.main)}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <CostIcon color="warning" />
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                LLM Costs (Today)
+              <CostIcon sx={{ color: '#d29922' }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, color: DK.text }}>
+                💸 LLM Costs (Today)
               </Typography>
             </Box>
 
@@ -306,25 +407,30 @@ const SystemHealthPanel = () => {
                 {/* Budget bar */}
                 <Box sx={{ mb: 2 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: DK.textMuted }}>
                       Daily Budget
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: DK.text }}>
                       ${costs.totalCost.toFixed(2)} / ${costs.maxBudget.toFixed(2)}
                     </Typography>
                   </Box>
                   <LinearProgress
                     variant="determinate"
                     value={budgetPct}
-                    color={budgetWarning ? 'error' : 'primary'}
                     sx={{
                       height: 10,
                       borderRadius: 5,
-                      backgroundColor: alpha(theme.palette.divider, 0.2),
+                      backgroundColor: alpha(DK.border, 0.5),
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 5,
+                        background: budgetWarning
+                          ? 'linear-gradient(90deg, #f85149 0%, #da3633 100%)'
+                          : `linear-gradient(90deg, ${DK.accent} 0%, #3fb950 100%)`,
+                      },
                     }}
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
-                    <Typography variant="caption" color={budgetWarning ? 'error' : 'text.secondary'}>
+                    <Typography variant="caption" sx={{ color: budgetWarning ? '#f85149' : DK.textMuted }}>
                       {budgetPct.toFixed(0)}% used
                     </Typography>
                   </Box>
@@ -348,13 +454,15 @@ const SystemHealthPanel = () => {
                     </Typography>
                     {agentCostList.map(({ agentId, cost, calls }) => {
                       const pct = costs.maxBudget > 0 ? (cost / costs.maxBudget) * 100 : 0;
+                      const agentColor = getAgentColor(agentId);
+                      const agentData  = getAgent(agentId);
                       return (
                         <Box key={agentId} sx={{ mb: 1.5 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
-                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                              {agentId}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
+                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: agentColor }}>
+                              {agentData?.emoji || '🤖'} {agentData?.name || agentId}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: DK.textMuted }}>
                               ${cost.toFixed(4)} · {calls} call{calls !== 1 ? 's' : ''}
                             </Typography>
                           </Box>
@@ -364,7 +472,11 @@ const SystemHealthPanel = () => {
                             sx={{
                               height: 6,
                               borderRadius: 3,
-                              backgroundColor: alpha(theme.palette.divider, 0.15),
+                              backgroundColor: alpha(agentColor, 0.12),
+                              '& .MuiLinearProgress-bar': {
+                                backgroundColor: agentColor,
+                                borderRadius: 3,
+                              },
                             }}
                           />
                         </Box>
@@ -381,14 +493,17 @@ const SystemHealthPanel = () => {
         <Grid item xs={12}>
           <Paper elevation={2} sx={sectionPaper(theme.palette.error.main)}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <QueueIcon color="error" />
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Dead Letter Queue
+              <QueueIcon sx={{ color: '#f85149' }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, color: DK.text }}>
+                📬 Dead Letter Queue
               </Typography>
               <Chip
                 label={`${pendingCount} pending`}
                 size="small"
-                color={pendingCount > 0 ? 'error' : 'default'}
+                sx={{
+                  borderColor: pendingCount > 0 ? '#f85149' : DK.border,
+                  color: pendingCount > 0 ? '#f85149' : DK.textMuted,
+                }}
                 variant="outlined"
               />
               {dlq.stats?.byStatus && (
@@ -412,34 +527,48 @@ const SystemHealthPanel = () => {
                 {dlqError}
               </Alert>
             ) : pendingCount === 0 ? (
-              <Alert severity="success" variant="outlined" icon={<ClosedIcon />} sx={{ borderRadius: 2 }}>
-                No pending dead letters — all clear!
+              <Alert severity="success" variant="outlined" icon={false} sx={{ borderRadius: 2, bgcolor: 'rgba(16,185,129,0.06)' }}>
+                <Typography variant="body2" sx={{ color: DK.text }}>
+                  ✅ No pending dead letters — the queue is crystal clear. All tasks resolved.
+                </Typography>
               </Alert>
             ) : (
               <Box>
-                {dlq.items.map((item) => {
-                  const isExpanded = expandedDL === item._id;
-                  const isRetrying = retryingId === item._id;
-                  return (
-                    <Card
-                      key={item._id}
-                      variant="outlined"
-                      sx={{
-                        mb: 1.5,
-                        borderColor: alpha(theme.palette.error.main, 0.25),
-                        borderRadius: 2,
-                      }}
-                    >
+                    {dlq.items.map((item) => {
+                      const isExpanded = expandedDL === item._id;
+                      const isRetrying = retryingId === item._id;
+                      const dlqAgentColor = getAgent(item.agentId)?.color || theme.palette.error.main;
+                      return (
+                        <Card
+                          key={item._id}
+                          variant="outlined"
+                          sx={{
+                            mb: 1.5,
+                            borderColor: alpha(dlqAgentColor, 0.35),
+                            borderLeft: `3px solid ${dlqAgentColor}`,
+                            borderRadius: 2,
+                            bgcolor: DK.surfaceAlt,
+                          }}
+                        >
                       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                         {/* Summary row */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Chip
-                            label={item.agentId}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                            sx={{ fontFamily: 'monospace', fontWeight: 700 }}
-                          />
+                          {(() => {
+                            const dlqAgent = getAgent(item.agentId);
+                            return (
+                              <Chip
+                                label={`${dlqAgent?.emoji || '🤖'} ${dlqAgent?.name || item.agentId}`}
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  fontFamily: 'monospace',
+                                  fontWeight: 700,
+                                  borderColor: dlqAgent?.color || theme.palette.primary.main,
+                                  color: dlqAgent?.color || theme.palette.primary.main,
+                                }}
+                              />
+                            );
+                          })()}
                           <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
                             {item.task?.action || 'unknown action'}
                           </Typography>
@@ -463,9 +592,11 @@ const SystemHealthPanel = () => {
                               mt: 1,
                               p: 1.5,
                               borderRadius: 1,
-                              backgroundColor: alpha(theme.palette.background.default, 0.6),
+                              backgroundColor: DK.bg,
+                              border: `1px solid ${DK.border}`,
                               fontFamily: 'monospace',
                               fontSize: '0.75rem',
+                              color: DK.textMuted,
                               whiteSpace: 'pre-wrap',
                               wordBreak: 'break-all',
                               maxHeight: 200,
@@ -521,8 +652,15 @@ const SystemHealthPanel = () => {
         onClose={() => setDismissDialog({ open: false, id: null })}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: DK.surface,
+            border: `1px solid ${DK.border}`,
+            backgroundImage: 'none',
+          },
+        }}
       >
-        <DialogTitle>Dismiss Dead Letter</DialogTitle>
+        <DialogTitle sx={{ color: DK.text }}>⚠️ Dismiss Dead Letter</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>
             Are you sure you want to dismiss this dead letter? This action cannot be undone.

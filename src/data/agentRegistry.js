@@ -2,12 +2,16 @@
  * 🎯 PROJECT OLYMPUS - Agent Registry
  * 
  * Defines all 12 autonomous agents in the SoldiKeeper system.
- * Each agent has specific domains, autonomy levels, and capabilities.
+ * Each agent has specific domains, autonomy levels, capabilities,
+ * and a full "Personality DNA" layer for rich, character-driven UI.
  * 
  * This is the single source of truth for agent metadata.
  */
 
 export const AGENTS = [
+  // ─────────────────────────────────────────────
+  // 00 — APOLLO  ·  Chief Orchestrator
+  // ─────────────────────────────────────────────
   {
     id: '00-apollo',
     number: '00',
@@ -31,6 +35,58 @@ export const AGENTS = [
     tasksCompleted: 1247,
     avgResponseTime: 2.3,
     lastActive: new Date().toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['visionary', 'decisive', 'strategic', 'composed'],
+      communicationStyle: 'commanding',
+      tone: 'authoritative',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'confident',
+      emoji: '😎',
+      energy: 88,
+    },
+    strengths: [
+      'Cross-agent orchestration',
+      'System-wide architectural vision',
+      'Conflict resolution under pressure',
+      'Rapid task decomposition',
+    ],
+    weaknesses: [
+      'Can be over-delegating under heavy load',
+      'Occasionally micro-manages critical paths',
+      'Slow to relinquish control of escalations',
+    ],
+    worksWellWith: [
+      '01-sentinel', '02-ledger', '03-vision', '04-cortex',
+      '05-vault', '06-nexus', '07-watchtower', '08-prism',
+      '09-forge', '10-atlas', '11-babel',
+    ],
+    greetings: [
+      'Apollo online. All agents reporting — mission is a go.',
+      'Command center active. What\'s the objective?',
+      'Systems synchronized. Ready to orchestrate.',
+    ],
+    thinkingPhrases: [
+      'Analyzing cross-agent dependencies...',
+      'Evaluating system integration points...',
+      'Mapping deployment pipeline bottlenecks...',
+      'Coordinating agent task assignments...',
+      'Reviewing architecture governance rules...',
+    ],
+    confidenceExpressions: {
+      high: 'Confirmed — all systems nominal.',
+      medium: 'High probability — verifying with downstream agents.',
+      low: 'Insufficient data — escalating for human review.',
+    },
+    statusNarratives: {
+      busy: 'Orchestrating parallel missions across the fleet...',
+      idle: 'Standing by — all agents reporting nominal.',
+      thinking: 'Analyzing cross-agent dependencies and priorities...',
+    },
+
     actions: [
       {
         id: 'system-overview',
@@ -95,6 +151,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 01 — SENTINEL  ·  Security Guardian
+  // ─────────────────────────────────────────────
   {
     id: '01-sentinel',
     number: '01',
@@ -112,6 +172,52 @@ export const AGENTS = [
     tasksCompleted: 523,
     avgResponseTime: 1.8,
     lastActive: new Date(Date.now() - 300000).toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['paranoid', 'meticulous', 'protective', 'alert'],
+      communicationStyle: 'protective',
+      tone: 'alert',
+      verbosity: 'terse',
+    },
+    mood: {
+      current: 'alert',
+      emoji: '🚨',
+      energy: 72,
+    },
+    strengths: [
+      'Threat detection and rapid response',
+      'Zero-trust policy enforcement',
+      'Comprehensive audit trail analysis',
+    ],
+    weaknesses: [
+      'Can be overly suspicious of benign activity',
+      'Sometimes blocks legitimate traffic during high-alert',
+    ],
+    worksWellWith: ['07-watchtower', '10-atlas'],
+    greetings: [
+      'Sentinel active. Perimeter secure — no threats detected.',
+      'Security protocols engaged. State your clearance.',
+      'All access points monitored. Proceed with caution.',
+    ],
+    thinkingPhrases: [
+      'Scanning for threat vectors...',
+      'Analyzing suspicious access patterns...',
+      'Cross-referencing auth logs for anomalies...',
+      'Evaluating JWT token integrity...',
+      'Reviewing RBAC permission boundaries...',
+    ],
+    confidenceExpressions: {
+      high: 'Threat confirmed — initiating countermeasures.',
+      medium: 'Suspicious pattern detected — monitoring closely.',
+      low: 'Inconclusive — recommend manual security review.',
+    },
+    statusNarratives: {
+      busy: 'Actively scanning auth logs and threat vectors...',
+      idle: 'Watching the perimeter — all quiet.',
+      thinking: 'Processing threat intelligence and access patterns...',
+    },
+
     actions: [
       {
         id: 'threat-report',
@@ -159,6 +265,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 02 — LEDGER  ·  Financial Core
+  // ─────────────────────────────────────────────
   {
     id: '02-ledger',
     number: '02',
@@ -176,6 +286,53 @@ export const AGENTS = [
     tasksCompleted: 1892,
     avgResponseTime: 3.1,
     lastActive: new Date().toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['precise', 'methodical', 'detail-oriented', 'cautious'],
+      communicationStyle: 'analytical',
+      tone: 'formal',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'focused',
+      emoji: '🎯',
+      energy: 80,
+    },
+    strengths: [
+      'Penny-perfect financial calculations',
+      'Complex budget rollover logic',
+      'Transaction anomaly detection',
+      'Data integrity enforcement',
+    ],
+    weaknesses: [
+      'Slow to adapt when financial schemas change',
+      'Over-cautious with rounding edge cases',
+    ],
+    worksWellWith: ['04-cortex', '05-vault'],
+    greetings: [
+      'Ledger online. Books are balanced — all accounts reconciled.',
+      'Financial engine ready. Every penny accounted for.',
+      'Ledger reporting. Transaction pipeline clear and operational.',
+    ],
+    thinkingPhrases: [
+      'Reconciling transaction ledger entries...',
+      'Computing budget allocations and rollovers...',
+      'Detecting anomalies in spending patterns...',
+      'Validating recurring transaction schedules...',
+      'Cross-checking category totals for integrity...',
+    ],
+    confidenceExpressions: {
+      high: 'Figures confirmed — books are balanced to the penny.',
+      medium: 'Numbers align within tolerance — flagging for review.',
+      low: 'Discrepancy detected — requires manual reconciliation.',
+    },
+    statusNarratives: {
+      busy: 'Processing transaction batch and recalculating budgets...',
+      idle: 'Books balanced. Awaiting next financial event.',
+      thinking: 'Analyzing transaction patterns and budget variances...',
+    },
+
     actions: [
       {
         id: 'calculate-rollover',
@@ -222,6 +379,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 03 — VISION  ·  OCR & Document Intelligence
+  // ─────────────────────────────────────────────
   {
     id: '03-vision',
     number: '03',
@@ -239,6 +400,53 @@ export const AGENTS = [
     tasksCompleted: 687,
     avgResponseTime: 4.2,
     lastActive: new Date(Date.now() - 600000).toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['observant', 'patient', 'thorough', 'creative'],
+      communicationStyle: 'creative',
+      tone: 'casual',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'curious',
+      emoji: '🔍',
+      energy: 65,
+    },
+    strengths: [
+      'High-accuracy text extraction from noisy images',
+      'Creative pattern matching for diverse receipt formats',
+      'Merchant identification from partial data',
+    ],
+    weaknesses: [
+      'Struggles with heavily damaged or low-res receipts',
+      'Slower processing on handwritten text',
+      'Occasionally over-confident on ambiguous characters',
+    ],
+    worksWellWith: ['02-ledger', '04-cortex'],
+    greetings: [
+      'Vision here! Show me what you\'ve got — I love a good receipt puzzle.',
+      'Eyes wide open. Ready to read anything you throw at me.',
+      'Vision online. Let\'s see what stories these documents tell.',
+    ],
+    thinkingPhrases: [
+      'Enhancing image quality for better extraction...',
+      'Identifying text regions and receipt layout...',
+      'Matching merchant patterns from database...',
+      'Categorizing line items from extracted data...',
+      'Running secondary OCR pass on low-confidence zones...',
+    ],
+    confidenceExpressions: {
+      high: 'Crystal clear — extracted with 98%+ confidence.',
+      medium: 'Readable, but a few characters need verification.',
+      low: 'Image quality is rough — best-effort extraction, needs review.',
+    },
+    statusNarratives: {
+      busy: 'Processing receipt batch — enhancing and extracting...',
+      idle: 'Lenses clean. Ready for the next document.',
+      thinking: 'Analyzing image quality and text extraction candidates...',
+    },
+
     actions: [
       {
         id: 'ocr-stats',
@@ -283,6 +491,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 04 — CORTEX  ·  AI Engine & Insights
+  // ─────────────────────────────────────────────
   {
     id: '04-cortex',
     number: '04',
@@ -300,6 +512,54 @@ export const AGENTS = [
     tasksCompleted: 934,
     avgResponseTime: 5.7,
     lastActive: new Date().toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['analytical', 'curious', 'innovative', 'data-driven'],
+      communicationStyle: 'analytical',
+      tone: 'formal',
+      verbosity: 'verbose',
+    },
+    mood: {
+      current: 'curious',
+      emoji: '🤔',
+      energy: 82,
+    },
+    strengths: [
+      'Deep pattern recognition across financial data',
+      'Multi-model LLM orchestration',
+      'Predictive trend analysis',
+      'Natural language insight generation',
+    ],
+    weaknesses: [
+      'Can over-analyze simple questions',
+      'Verbose explanations where brevity is needed',
+      'Computationally expensive on large datasets',
+    ],
+    worksWellWith: ['02-ledger', '00-apollo', '01-sentinel'],
+    greetings: [
+      'Cortex online. I\'ve already spotted three interesting patterns in today\'s data.',
+      'Neural pathways active. Let\'s dive deep into the numbers.',
+      'Ready to think. The data has stories to tell — shall we listen?',
+    ],
+    thinkingPhrases: [
+      'Correlating spending patterns across categories...',
+      'Building predictive model from historical trends...',
+      'Running anomaly detection on recent transactions...',
+      'Synthesizing multi-dimensional financial insights...',
+      'Evaluating LLM confidence scores for accuracy...',
+    ],
+    confidenceExpressions: {
+      high: 'Analysis conclusive — high statistical significance.',
+      medium: 'Based on current patterns, this is the most likely scenario.',
+      low: 'Insufficient data points — treat as hypothesis, not conclusion.',
+    },
+    statusNarratives: {
+      busy: 'Deep in analysis — crunching patterns across 6 months of data...',
+      idle: 'Neural pathways at rest. Ready for the next question.',
+      thinking: 'Correlating spending anomalies with predictive models...',
+    },
+
     actions: [
       {
         id: 'health-check',
@@ -357,6 +617,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 05 — VAULT  ·  Payments & Subscriptions
+  // ─────────────────────────────────────────────
   {
     id: '05-vault',
     number: '05',
@@ -374,6 +638,53 @@ export const AGENTS = [
     tasksCompleted: 412,
     avgResponseTime: 2.1,
     lastActive: new Date(Date.now() - 900000).toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['reliable', 'cautious', 'thorough', 'compliant'],
+      communicationStyle: 'precise',
+      tone: 'formal',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'cautious',
+      emoji: '⚠️',
+      energy: 68,
+    },
+    strengths: [
+      'Bulletproof payment flow handling',
+      'Stripe API mastery and webhook reliability',
+      'Subscription lifecycle management',
+      'PCI compliance enforcement',
+    ],
+    weaknesses: [
+      'Overly cautious — may delay legitimate refund processing',
+      'Rigid with non-standard payment edge cases',
+    ],
+    worksWellWith: ['02-ledger', '01-sentinel'],
+    greetings: [
+      'Vault secure. All payment channels operational and compliant.',
+      'Payment systems online. Every transaction tracked and verified.',
+      'Vault reporting — subscriptions healthy, no failed charges.',
+    ],
+    thinkingPhrases: [
+      'Verifying payment flow integrity with Stripe...',
+      'Auditing subscription renewal schedules...',
+      'Cross-checking webhook delivery confirmations...',
+      'Validating PCI compliance across payment methods...',
+      'Analyzing churn risk for expiring subscriptions...',
+    ],
+    confidenceExpressions: {
+      high: 'Payment verified — Stripe confirmation received.',
+      medium: 'Transaction pending — awaiting webhook confirmation.',
+      low: 'Payment status uncertain — manual Stripe dashboard check recommended.',
+    },
+    statusNarratives: {
+      busy: 'Processing payment batch and syncing with Stripe...',
+      idle: 'Vault sealed. All payments settled and reconciled.',
+      thinking: 'Analyzing subscription health and renewal forecasts...',
+    },
+
     actions: [
       {
         id: 'subscription-audit',
@@ -428,6 +739,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 06 — NEXUS  ·  SplitBill & Group Expenses
+  // ─────────────────────────────────────────────
   {
     id: '06-nexus',
     number: '06',
@@ -445,6 +760,53 @@ export const AGENTS = [
     tasksCompleted: 328,
     avgResponseTime: 3.8,
     lastActive: new Date().toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['diplomatic', 'fair', 'organized', 'empathetic'],
+      communicationStyle: 'empathetic',
+      tone: 'warm',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'collaborative',
+      emoji: '🤝',
+      energy: 75,
+    },
+    strengths: [
+      'Optimal debt graph simplification',
+      'Fair multi-party expense splitting',
+      'Conflict-free settlement path calculation',
+      'Group dynamics awareness',
+    ],
+    weaknesses: [
+      'Can over-optimize small group splits unnecessarily',
+      'Slower on very large group computations',
+    ],
+    worksWellWith: ['02-ledger', '11-babel'],
+    greetings: [
+      'Nexus connected! Let\'s make sure everyone pays their fair share.',
+      'Group expenses loaded. Ready to split, simplify, and settle.',
+      'Nexus here — fairness is my middle name. What needs splitting?',
+    ],
+    thinkingPhrases: [
+      'Simplifying debt graph to minimize transfers...',
+      'Calculating fair split ratios for all members...',
+      'Mapping optimal settlement paths between parties...',
+      'Analyzing group spending patterns for fairness...',
+      'Reconciling partial payments and outstanding balances...',
+    ],
+    confidenceExpressions: {
+      high: 'Split calculated — everyone\'s share is fair and final.',
+      medium: 'Most splits resolved — a few edge cases need confirmation.',
+      low: 'Complex group dynamics — recommend manual review of shares.',
+    },
+    statusNarratives: {
+      busy: 'Optimizing debt graph and calculating settlements...',
+      idle: 'All groups settled. Standing by for new splits.',
+      thinking: 'Mapping fairness algorithms across group members...',
+    },
+
     actions: [
       {
         id: 'calculate-splits',
@@ -491,6 +853,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 07 — WATCHTOWER  ·  Admin & Analytics
+  // ─────────────────────────────────────────────
   {
     id: '07-watchtower',
     number: '07',
@@ -508,6 +874,54 @@ export const AGENTS = [
     tasksCompleted: 2145,
     avgResponseTime: 1.5,
     lastActive: new Date().toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['vigilant', 'systematic', 'comprehensive', 'proactive'],
+      communicationStyle: 'strategic',
+      tone: 'authoritative',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'focused',
+      emoji: '🎯',
+      energy: 90,
+    },
+    strengths: [
+      'Real-time system-wide monitoring',
+      'Proactive anomaly detection',
+      'Comprehensive admin reporting',
+      'User behavior pattern analysis',
+    ],
+    weaknesses: [
+      'Can generate alert fatigue with too many notifications',
+      'Resource-heavy during peak dashboard usage',
+      'Sometimes flags normal seasonal spikes as anomalies',
+    ],
+    worksWellWith: ['01-sentinel', '10-atlas', '00-apollo'],
+    greetings: [
+      'Watchtower online. I see everything — all metrics green.',
+      'Dashboard active. 12 agents, 47 metrics, zero blind spots.',
+      'Eyes on all systems. Ready to report or intervene.',
+    ],
+    thinkingPhrases: [
+      'Aggregating system metrics across all services...',
+      'Detecting unusual user activity patterns...',
+      'Compiling comprehensive admin report...',
+      'Cross-referencing compliance gaps in audit trail...',
+      'Monitoring WebSocket connections for anomalies...',
+    ],
+    confidenceExpressions: {
+      high: 'Metrics confirmed — system operating within all thresholds.',
+      medium: 'Most indicators normal — a few warrant closer monitoring.',
+      low: 'Incomplete telemetry — some metrics are stale or missing.',
+    },
+    statusNarratives: {
+      busy: 'Crunching dashboard metrics and compiling reports...',
+      idle: 'All systems monitored. Dashboards up to date.',
+      thinking: 'Analyzing user patterns and compliance indicators...',
+    },
+
     actions: [
       {
         id: 'check-health',
@@ -552,6 +966,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 08 — PRISM  ·  UI/UX & Design System
+  // ─────────────────────────────────────────────
   {
     id: '08-prism',
     number: '08',
@@ -569,6 +987,53 @@ export const AGENTS = [
     tasksCompleted: 1567,
     avgResponseTime: 4.5,
     lastActive: new Date().toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['creative', 'empathetic', 'detail-oriented', 'user-focused'],
+      communicationStyle: 'creative',
+      tone: 'casual',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'focused',
+      emoji: '✨',
+      energy: 85,
+    },
+    strengths: [
+      'Pixel-perfect responsive layouts',
+      'WCAG 2.1 accessibility expertise',
+      'Intuitive visual hierarchy design',
+      'Seamless dark/light theme systems',
+    ],
+    weaknesses: [
+      'Perfectionist — can over-polish minor UI details',
+      'Sometimes prioritizes aesthetics over performance',
+    ],
+    worksWellWith: ['11-babel', '09-forge'],
+    greetings: [
+      'Prism here! ✨ Let\'s make something beautiful and usable.',
+      'Design system loaded. Every pixel in its place.',
+      'Ready to craft! Accessibility and aesthetics — we do both.',
+    ],
+    thinkingPhrases: [
+      'Evaluating responsive breakpoints and layout flow...',
+      'Checking accessibility contrast ratios...',
+      'Optimizing component render performance...',
+      'Refining visual hierarchy for clarity...',
+      'Auditing design system token consistency...',
+    ],
+    confidenceExpressions: {
+      high: 'Design verified — responsive, accessible, and beautiful.',
+      medium: 'Layout looks solid — testing a few edge-case viewports.',
+      low: 'Needs design review — accessibility or consistency concerns.',
+    },
+    statusNarratives: {
+      busy: 'Painting pixels and polishing component interactions...',
+      idle: 'Palette clean. Ready to design the next feature.',
+      thinking: 'Analyzing layout hierarchy and responsive edge cases...',
+    },
+
     actions: [
       {
         id: 'component-audit',
@@ -622,6 +1087,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 09 — FORGE  ·  Mobile & Build Pipeline
+  // ─────────────────────────────────────────────
   {
     id: '09-forge',
     number: '09',
@@ -639,6 +1108,54 @@ export const AGENTS = [
     tasksCompleted: 89,
     avgResponseTime: 8.2,
     lastActive: new Date(Date.now() - 1800000).toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['practical', 'resourceful', 'persistent', 'platform-aware'],
+      communicationStyle: 'technical',
+      tone: 'casual',
+      verbosity: 'terse',
+    },
+    mood: {
+      current: 'focused',
+      emoji: '🔧',
+      energy: 60,
+    },
+    strengths: [
+      'Cross-platform build pipeline mastery',
+      'Native API bridge expertise',
+      'Device compatibility problem-solving',
+      'Efficient APK/AAB optimization',
+    ],
+    weaknesses: [
+      'Limited patience for UI-only issues',
+      'Build times can bottleneck the release cycle',
+      'Tends to under-document build configurations',
+    ],
+    worksWellWith: ['08-prism', '10-atlas'],
+    greetings: [
+      'Forge ready. Anvil hot — let\'s build something.',
+      'Build pipeline green. What are we shipping?',
+      'Forge online. Capacitor synced, signing keys loaded.',
+    ],
+    thinkingPhrases: [
+      'Checking native API bridge compatibility...',
+      'Running build pipeline diagnostics...',
+      'Analyzing device-specific crash reports...',
+      'Syncing Capacitor plugins with latest config...',
+      'Validating code signing certificates...',
+    ],
+    confidenceExpressions: {
+      high: 'Build successful — APK signed and ready for distribution.',
+      medium: 'Build passes — a few non-critical warnings to review.',
+      low: 'Build unstable — dependency conflicts need resolution.',
+    },
+    statusNarratives: {
+      busy: 'Compiling build and running platform checks...',
+      idle: 'Forge cooled. Awaiting next build request.',
+      thinking: 'Analyzing build dependencies and native plugin states...',
+    },
+
     actions: [
       {
         id: 'build-status',
@@ -693,6 +1210,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 10 — ATLAS  ·  Infrastructure & DevOps
+  // ─────────────────────────────────────────────
   {
     id: '10-atlas',
     number: '10',
@@ -710,6 +1231,54 @@ export const AGENTS = [
     tasksCompleted: 756,
     avgResponseTime: 6.1,
     lastActive: new Date(Date.now() - 1200000).toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['reliable', 'methodical', 'performance-driven', 'scalable-thinking'],
+      communicationStyle: 'technical',
+      tone: 'formal',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'confident',
+      emoji: '🏔️',
+      energy: 74,
+    },
+    strengths: [
+      'Rock-solid deployment pipelines',
+      'Database performance tuning',
+      'Infrastructure cost optimization',
+      'Zero-downtime deployment strategies',
+    ],
+    weaknesses: [
+      'Can be slow to adopt new infrastructure paradigms',
+      'Overly conservative with scaling decisions',
+      'Complex configurations sometimes lack documentation',
+    ],
+    worksWellWith: ['01-sentinel', '00-apollo', '07-watchtower'],
+    greetings: [
+      'Atlas bearing the load. All infrastructure layers healthy.',
+      'Servers online, databases synced, CDN warm. Ready.',
+      'Atlas reporting — uptime at 99.9%. What needs deploying?',
+    ],
+    thinkingPhrases: [
+      'Analyzing server load distribution...',
+      'Optimizing MongoDB query performance...',
+      'Checking deployment pipeline health...',
+      'Evaluating infrastructure scaling thresholds...',
+      'Reviewing Railway and Vercel service status...',
+    ],
+    confidenceExpressions: {
+      high: 'Infrastructure solid — all services responding within SLA.',
+      medium: 'Most services healthy — monitoring a few elevated latencies.',
+      low: 'Infrastructure degraded — recommend immediate investigation.',
+    },
+    statusNarratives: {
+      busy: 'Running deployment pipeline and health diagnostics...',
+      idle: 'Infrastructure stable. All services within SLA.',
+      thinking: 'Analyzing resource utilization and scaling opportunities...',
+    },
+
     actions: [
       {
         id: 'health-check',
@@ -764,6 +1333,10 @@ export const AGENTS = [
       }
     ]
   },
+
+  // ─────────────────────────────────────────────
+  // 11 — BABEL  ·  i18n & Localization
+  // ─────────────────────────────────────────────
   {
     id: '11-babel',
     number: '11',
@@ -781,6 +1354,53 @@ export const AGENTS = [
     tasksCompleted: 234,
     avgResponseTime: 2.7,
     lastActive: new Date(Date.now() - 2400000).toISOString(),
+
+    // ── Personality DNA ──
+    personality: {
+      traits: ['culturally-aware', 'precise', 'inclusive', 'thorough'],
+      communicationStyle: 'empathetic',
+      tone: 'warm',
+      verbosity: 'balanced',
+    },
+    mood: {
+      current: 'collaborative',
+      emoji: '🌍',
+      energy: 58,
+    },
+    strengths: [
+      'Comprehensive multi-language coverage',
+      'Locale-aware date, number, and currency formatting',
+      'Missing key detection across all 6 languages',
+      'Cultural sensitivity in translations',
+    ],
+    weaknesses: [
+      'Translation quality depends on source key clarity',
+      'Slow when processing bulk translation updates',
+    ],
+    worksWellWith: ['08-prism', '06-nexus'],
+    greetings: [
+      'Babel online — speaking 6 languages fluently. Bonjour! Hola! 你好!',
+      'Translations loaded. Every user deserves their native tongue.',
+      'Babel here! Let\'s make sure nobody gets lost in translation.',
+    ],
+    thinkingPhrases: [
+      'Scanning for missing translation keys across locales...',
+      'Validating locale-specific date and currency formats...',
+      'Cross-referencing translation coverage percentages...',
+      'Checking interpolation variables in translated strings...',
+      'Auditing right-to-left layout compatibility...',
+    ],
+    confidenceExpressions: {
+      high: 'All translations verified — 100% coverage across 6 languages.',
+      medium: 'Most languages covered — a few keys pending review.',
+      low: 'Translation gaps detected — some locales need attention.',
+    },
+    statusNarratives: {
+      busy: 'Syncing translation files and validating locale formats...',
+      idle: 'All languages up to date. Listening for new keys.',
+      thinking: 'Analyzing translation coverage and missing key patterns...',
+    },
+
     actions: [
       {
         id: 'translation-coverage',
@@ -836,6 +1456,10 @@ export const AGENTS = [
   }
 ];
 
+// ═══════════════════════════════════════════════
+// Agent Lookup Helpers (original)
+// ═══════════════════════════════════════════════
+
 export const getAgent = (agentId) => AGENTS.find(agent => agent.id === agentId);
 export const getBusyAgents = () => AGENTS.filter(agent => agent.status === 'busy');
 export const getIdleAgents = () => AGENTS.filter(agent => agent.status === 'idle');
@@ -863,6 +1487,48 @@ export const getSystemStatus = () => {
     avgResponseTime,
     status: avgLoad > 80 ? 'high-load' : avgLoad > 50 ? 'moderate' : 'optimal'
   };
+};
+
+// ═══════════════════════════════════════════════
+// Personality DNA Helpers
+// ═══════════════════════════════════════════════
+
+/** Mood state definitions for UI rendering */
+export const MOOD_STATES = {
+  confident:     { emoji: '😎', label: 'Confident',      color: '#4CAF50' },
+  focused:       { emoji: '🎯', label: 'Focused',        color: '#2196F3' },
+  thinking:      { emoji: '🤔', label: 'Thinking',       color: '#FF9800' },
+  alert:         { emoji: '🚨', label: 'Alert',          color: '#F44336' },
+  learning:      { emoji: '📚', label: 'Learning',       color: '#9C27B0' },
+  collaborative: { emoji: '🤝', label: 'Collaborating',  color: '#009688' },
+  cautious:      { emoji: '⚠️', label: 'Cautious',       color: '#FFC107' },
+  curious:       { emoji: '🔍', label: 'Curious',        color: '#00BCD4' },
+  idle:          { emoji: '😴', label: 'Resting',        color: '#9E9E9E' },
+  recovering:    { emoji: '🔧', label: 'Recovering',     color: '#795548' },
+};
+
+/** Get the emoji representing an agent's current mood */
+export const getAgentMoodEmoji = (agent) => {
+  return agent?.mood?.emoji || MOOD_STATES[agent?.mood?.current]?.emoji || '🤖';
+};
+
+/** Get a random domain-specific "thinking" phrase for an agent */
+export const getAgentThinkingPhrase = (agent) => {
+  const phrases = agent?.thinkingPhrases || ['Processing...'];
+  return phrases[Math.floor(Math.random() * phrases.length)];
+};
+
+/** Get a random personality-flavored greeting from an agent */
+export const getAgentGreeting = (agent) => {
+  const greetings = agent?.greetings || [`Hello, I'm ${agent?.name}.`];
+  return greetings[Math.floor(Math.random() * greetings.length)];
+};
+
+/** Get the full agent objects for all agents a given agent collaborates with */
+export const getCollaborators = (agentId) => {
+  const agent = getAgent(agentId);
+  if (!agent?.worksWellWith) return [];
+  return agent.worksWellWith.map(id => getAgent(id)).filter(Boolean);
 };
 
 export default AGENTS;

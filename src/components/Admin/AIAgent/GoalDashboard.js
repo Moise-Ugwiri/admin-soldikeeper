@@ -13,16 +13,51 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Select, MenuItem, FormControl, InputLabel,
   Alert, Tooltip, Stack, Divider, CircularProgress,
-  useTheme, alpha, Collapse
+  alpha, Collapse
 } from '@mui/material';
 import {
   TrendingUp, TrendingDown, TrendingFlat,
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Flag as FlagIcon, CheckCircle, Warning, Error as ErrorIcon,
+  Flag as FlagIcon,
   ExpandMore as ExpandIcon, ExpandLess as CollapseIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import apiClient from '../../../services/api';
+import { getAgent } from '../../../data/agentRegistry';
+
+// ─── Dark Theme Palette ────────────────────────────────────────────────
+const DK = {
+  bg:         '#0d1117',
+  surface:    '#161b22',
+  surfaceAlt: '#21262d',
+  border:     '#30363d',
+  text:       '#e6edf3',
+  textMuted:  '#8b949e',
+  accent:     '#10b981',
+};
+
+// ─── Status Emoji Indicators ───────────────────────────────────────────
+const STATUS_EMOJI = {
+  active:   '🎯',
+  achieved: '✅',
+  paused:   '⏳',
+  failed:   '❌',
+};
+
+// ─── Personality-Driven Narratives ─────────────────────────────────────
+const getGoalNarrative = (stats) => {
+  if (stats.total === 0) return { emoji: '🚀', text: 'No goals defined yet. Set objectives to give your agents a mission.' };
+  if (stats.achieved === stats.total) return { emoji: '🏆', text: 'Every goal achieved! The fleet is exceeding expectations.' };
+  if (stats.offTrack > stats.total / 2) return { emoji: '⚠️', text: 'Multiple goals off track. Consider reassigning priorities or extending deadlines.' };
+  if (stats.avgProgress >= 80) return { emoji: '🔥', text: 'Fleet is on fire! Average progress above 80% — mission success in sight.' };
+  if (stats.avgProgress >= 50) return { emoji: '📈', text: 'Steady progress across the board. Agents are converging on their targets.' };
+  return { emoji: '🏗️', text: 'Goals are in early stages. Agents are ramping up toward their targets.' };
+};
+
+const getAgentColor = (agentId) => {
+  const agent = getAgent(agentId);
+  return agent?.color || DK.accent;
+};
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -48,13 +83,6 @@ const PRIORITY_COLORS = {
   low: 'default',
 };
 
-const STATUS_COLORS = {
-  active: 'primary',
-  achieved: 'success',
-  failed: 'error',
-  paused: 'default',
-};
-
 const DIRECTION_ICONS = {
   increase: TrendingUp,
   decrease: TrendingDown,
@@ -77,7 +105,6 @@ const EMPTY_FORM = {
 // ─── Component ──────────────────────────────────────────────────────────
 
 const GoalDashboard = () => {
-  const theme = useTheme();
 
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -195,19 +222,11 @@ const GoalDashboard = () => {
     return Math.min(Math.round((goal.currentValue / goal.targetValue) * 100), 100);
   };
 
-  const getProgressColor = (pct) => {
-    if (pct >= 80) return 'success';
-    if (pct >= 50) return 'primary';
-    if (pct >= 25) return 'warning';
-    return 'error';
-  };
-
   const DirectionIcon = ({ direction }) => {
     const Icon = DIRECTION_ICONS[direction] || TrendingFlat;
-    const label = direction === 'increase' ? '↑' : direction === 'decrease' ? '↓' : '↔';
     return (
       <Tooltip title={`Direction: ${direction || 'maintain'}`}>
-        <Icon fontSize="small" color="action" />
+        <Icon fontSize="small" sx={{ color: DK.textMuted }} />
       </Tooltip>
     );
   };
@@ -218,7 +237,9 @@ const GoalDashboard = () => {
       elevation={3}
       sx={{
         overflow: 'hidden',
-        border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+        border: `1px solid ${DK.border}`,
+        bgcolor: DK.bg,
+        backgroundImage: 'none',
       }}
     >
       {/* Header */}
@@ -226,82 +247,128 @@ const GoalDashboard = () => {
         sx={{
           px: 2, py: 1.5,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
-          borderBottom: `1px solid ${theme.palette.divider}`,
+          background: `linear-gradient(135deg, ${DK.surface} 0%, ${DK.bg} 100%)`,
+          borderBottom: `1px solid ${DK.border}`,
           cursor: 'pointer',
         }}
         onClick={() => setPanelOpen(!panelOpen)}
       >
         <Stack direction="row" alignItems="center" spacing={1}>
-          <FlagIcon sx={{ color: theme.palette.primary.main }} />
-          <Typography variant="h6" fontWeight={700}>Goal Dashboard</Typography>
-          <Chip label={goals.length} size="small" variant="outlined" />
+          <FlagIcon sx={{ color: DK.accent }} />
+          <Typography variant="h6" fontWeight={700} sx={{ color: DK.text }}>🎯 Goal Dashboard</Typography>
+          <Chip label={goals.length} size="small" variant="outlined" sx={{ borderColor: DK.border, color: DK.textMuted }} />
         </Stack>
         <Stack direction="row" alignItems="center" spacing={0.5}>
           <Tooltip title="Refresh">
-            <IconButton size="small" onClick={(e) => { e.stopPropagation(); fetchGoals(); }} disabled={loading}>
-              {loading ? <CircularProgress size={18} /> : <RefreshIcon fontSize="small" />}
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); fetchGoals(); }} disabled={loading} sx={{ color: DK.textMuted }}>
+              {loading ? <CircularProgress size={18} sx={{ color: DK.accent }} /> : <RefreshIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
-          <IconButton size="small">
+          <IconButton size="small" sx={{ color: DK.textMuted }}>
             {panelOpen ? <CollapseIcon /> : <ExpandIcon />}
           </IconButton>
         </Stack>
       </Box>
 
       <Collapse in={panelOpen}>
+        {/* Narrative banner */}
+        {(() => {
+          const goalNarr = getGoalNarrative(stats);
+          return (
+            <Box sx={{
+              mx: 2, mt: 1.5, px: 2, py: 1.5, borderRadius: 2,
+              bgcolor: alpha(DK.accent, 0.06),
+              border: `1px solid ${alpha(DK.accent, 0.2)}`,
+              display: 'flex', alignItems: 'center', gap: 1.5,
+            }}>
+              <Typography sx={{ fontSize: '1.3rem', lineHeight: 1 }}>{goalNarr.emoji}</Typography>
+              <Typography variant="body2" sx={{ color: DK.text, fontWeight: 500 }}>{goalNarr.text}</Typography>
+            </Box>
+          );
+        })()}
+
         {/* Toolbar: Agent selector + Create button */}
-        <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
+        <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, borderBottom: `1px solid ${DK.border}` }}>
+          <FormControl size="small" sx={{
+            minWidth: 200,
+            '& .MuiOutlinedInput-root': { borderColor: DK.border, color: DK.text },
+            '& .MuiInputLabel-root': { color: DK.textMuted },
+            '& .MuiSelect-icon': { color: DK.textMuted },
+          }}>
             <InputLabel>Agent</InputLabel>
             <Select value={selectedAgent} label="Agent" onChange={(e) => setSelectedAgent(e.target.value)}>
               <MenuItem value="all">All Agents</MenuItem>
-              {AGENT_OPTIONS.map((a) => (
-                <MenuItem key={a.id} value={a.id}>{a.label}</MenuItem>
-              ))}
+              {AGENT_OPTIONS.map((a) => {
+                const agentData = getAgent(a.id);
+                return (
+                  <MenuItem key={a.id} value={a.id}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography sx={{ fontSize: '1rem' }}>{agentData?.emoji || '🤖'}</Typography>
+                      <Typography sx={{ color: agentData?.color }}>{agentData?.name || a.label}</Typography>
+                    </Box>
+                  </MenuItem>
+                );
+              })}
             </Select>
           </FormControl>
-          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openCreate}>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={openCreate}
+            sx={{
+              bgcolor: DK.accent,
+              '&:hover': { bgcolor: '#0d9668' },
+              fontWeight: 700,
+            }}
+          >
             New Goal
           </Button>
         </Box>
 
         {/* Summary stats */}
-        <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
+        <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${DK.border}` }}>
           <Stack direction="row" spacing={3} flexWrap="wrap">
             <Stack alignItems="center">
-              <Typography variant="h5" fontWeight={700}>{stats.total}</Typography>
-              <Typography variant="caption" color="text.secondary">Total</Typography>
+              <Typography variant="h5" fontWeight={700} sx={{ color: DK.text }}>{stats.total}</Typography>
+              <Typography variant="caption" sx={{ color: DK.textMuted }}>Total</Typography>
             </Stack>
             <Stack alignItems="center">
-              <Typography variant="h5" fontWeight={700} color="success.main">{stats.achieved}</Typography>
-              <Typography variant="caption" color="text.secondary">Achieved</Typography>
+              <Typography variant="h5" fontWeight={700} sx={{ color: '#3fb950' }}>{stats.achieved}</Typography>
+              <Typography variant="caption" sx={{ color: DK.textMuted }}>✅ Achieved</Typography>
             </Stack>
             <Stack alignItems="center">
-              <Typography variant="h5" fontWeight={700} color="error.main">{stats.offTrack}</Typography>
-              <Typography variant="caption" color="text.secondary">Off Track</Typography>
+              <Typography variant="h5" fontWeight={700} sx={{ color: '#f85149' }}>{stats.offTrack}</Typography>
+              <Typography variant="caption" sx={{ color: DK.textMuted }}>🔴 Off Track</Typography>
             </Stack>
             <Stack alignItems="center">
-              <Typography variant="h5" fontWeight={700} color="primary.main">{stats.avgProgress}%</Typography>
-              <Typography variant="caption" color="text.secondary">Avg Progress</Typography>
+              <Typography variant="h5" fontWeight={700} sx={{ color: DK.accent }}>{stats.avgProgress}%</Typography>
+              <Typography variant="caption" sx={{ color: DK.textMuted }}>📊 Avg Progress</Typography>
             </Stack>
           </Stack>
         </Box>
 
-        {error && <Alert severity="error" sx={{ m: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+        {error && <Alert severity="error" sx={{ m: 2, bgcolor: 'rgba(248,81,73,0.08)', borderColor: 'rgba(248,81,73,0.25)' }} variant="outlined" onClose={() => setError(null)}>{error}</Alert>}
 
-        {loading && <LinearProgress />}
+        {loading && <LinearProgress sx={{ bgcolor: alpha(DK.accent, 0.1), '& .MuiLinearProgress-bar': { bgcolor: DK.accent } }} />}
 
         {/* Goal cards */}
         <Box sx={{ p: 2, maxHeight: 520, overflowY: 'auto' }}>
           {!loading && goals.length === 0 && (
-            <Alert severity="info">No goals found. Create one to get started.</Alert>
+            <Alert severity="info" variant="outlined" icon={false} sx={{ bgcolor: alpha('#388bfd', 0.06), borderColor: alpha('#388bfd', 0.2) }}>
+              <Typography variant="body2" sx={{ color: DK.text }}>
+                🚀 No goals found. Create one to give your agents a mission to accomplish.
+              </Typography>
+            </Alert>
           )}
 
           <Grid container spacing={2}>
             {goals.map((goal) => {
               const pct = getProgress(goal);
-              const agentLabel = AGENT_OPTIONS.find(a => a.id === goal.agentId)?.label || goal.agentId;
+              const agentData = getAgent(goal.agentId);
+              const agentColor = getAgentColor(goal.agentId);
+              const agentLabel = agentData ? `${agentData.emoji} ${agentData.name}` : (AGENT_OPTIONS.find(a => a.id === goal.agentId)?.label || goal.agentId);
+              const statusEmoji = STATUS_EMOJI[goal.status] || '🎯';
 
               return (
                 <Grid item xs={12} sm={6} md={4} key={goal._id}>
@@ -309,70 +376,102 @@ const GoalDashboard = () => {
                     variant="outlined"
                     sx={{
                       height: '100%',
-                      borderLeft: `4px solid ${theme.palette[PRIORITY_COLORS[goal.priority] || 'primary'].main}`,
-                      transition: 'box-shadow 0.2s',
-                      '&:hover': { boxShadow: 4 },
+                      borderLeft: `4px solid ${agentColor}`,
+                      borderColor: DK.border,
+                      bgcolor: DK.surface,
+                      backgroundImage: 'none',
+                      transition: 'box-shadow 0.2s, border-color 0.2s',
+                      '&:hover': {
+                        boxShadow: `0 4px 20px ${alpha(agentColor, 0.15)}`,
+                        borderColor: alpha(agentColor, 0.4),
+                      },
                     }}
                   >
                     <CardContent sx={{ pb: 1 }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                        <Typography variant="subtitle1" fontWeight={700} noWrap sx={{ flex: 1 }}>
-                          {goal.title}
+                        <Typography variant="subtitle1" fontWeight={700} noWrap sx={{ flex: 1, color: DK.text }}>
+                          {statusEmoji} {goal.title}
                         </Typography>
                         <DirectionIcon direction={goal.direction} />
                       </Stack>
 
                       {goal.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        <Typography variant="body2" sx={{ mt: 0.5, mb: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', color: DK.textMuted }}>
                           {goal.description}
                         </Typography>
                       )}
 
                       <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mb: 1 }}>
                         <Chip label={goal.priority} size="small" color={PRIORITY_COLORS[goal.priority] || 'default'} />
-                        <Chip label={goal.status || 'active'} size="small" color={STATUS_COLORS[goal.status] || 'primary'} variant="outlined" />
-                        <Chip label={agentLabel} size="small" variant="outlined" sx={{ fontSize: 11 }} />
+                        <Chip
+                          label={`${statusEmoji} ${goal.status || 'active'}`}
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            borderColor: alpha(agentColor, 0.4),
+                            color: DK.text,
+                          }}
+                        />
+                        <Chip
+                          label={agentLabel}
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            fontSize: 11,
+                            borderColor: alpha(agentColor, 0.35),
+                            color: agentColor,
+                            fontWeight: 600,
+                          }}
+                        />
                       </Stack>
 
                       {/* Progress */}
                       <Box sx={{ mt: 1 }}>
                         <Stack direction="row" justifyContent="space-between" alignItems="center">
-                          <Typography variant="caption" fontWeight={600}>
+                          <Typography variant="caption" fontWeight={600} sx={{ color: DK.text }}>
                             {goal.currentValue ?? 0}{goal.unit || ''} / {goal.targetValue ?? '?'}{goal.unit || ''} target
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">{pct}%</Typography>
+                          <Typography variant="caption" sx={{ color: agentColor, fontWeight: 700 }}>{pct}%</Typography>
                         </Stack>
                         <LinearProgress
                           variant="determinate"
                           value={pct}
-                          color={getProgressColor(pct)}
-                          sx={{ height: 8, borderRadius: 4, mt: 0.5 }}
+                          sx={{
+                            height: 8,
+                            borderRadius: 4,
+                            mt: 0.5,
+                            backgroundColor: alpha(agentColor, 0.12),
+                            '& .MuiLinearProgress-bar': {
+                              backgroundColor: agentColor,
+                              borderRadius: 4,
+                            },
+                          }}
                         />
                       </Box>
 
                       {/* Checkpoint */}
                       {goal.lastCheckpoint && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                          Last checkpoint: {new Date(goal.lastCheckpoint).toLocaleDateString()}
+                        <Typography variant="caption" sx={{ display: 'block', mt: 1, color: DK.textMuted }}>
+                          📌 Last checkpoint: {new Date(goal.lastCheckpoint).toLocaleDateString()}
                         </Typography>
                       )}
                       {goal.deadline && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          Deadline: {new Date(goal.deadline).toLocaleDateString()}
+                        <Typography variant="caption" sx={{ display: 'block', color: DK.textMuted }}>
+                          ⏰ Deadline: {new Date(goal.deadline).toLocaleDateString()}
                         </Typography>
                       )}
                     </CardContent>
 
-                    <Divider />
+                    <Divider sx={{ borderColor: DK.border }} />
 
                     <CardActions sx={{ justifyContent: 'flex-end', px: 1, py: 0.5 }}>
                       <Tooltip title="Edit">
-                        <IconButton size="small" onClick={() => handleEdit(goal)}>
+                        <IconButton size="small" onClick={() => handleEdit(goal)} sx={{ color: DK.textMuted, '&:hover': { color: agentColor } }}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, id: goal._id, title: goal.title })}>
+                        <IconButton size="small" onClick={() => setDeleteDialog({ open: true, id: goal._id, title: goal.title })} sx={{ color: DK.textMuted, '&:hover': { color: '#f85149' } }}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -386,20 +485,38 @@ const GoalDashboard = () => {
       </Collapse>
 
       {/* ── Create / Edit Dialog ─────────────────────────────────────── */}
-      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingId ? 'Edit Goal' : 'Create Goal'}</DialogTitle>
+      <Dialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: DK.surface,
+            border: `1px solid ${DK.border}`,
+            backgroundImage: 'none',
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: DK.text }}>{editingId ? '✏️ Edit Goal' : '🎯 Create Goal'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <FormControl fullWidth size="small">
-              <InputLabel>Agent</InputLabel>
+              <InputLabel sx={{ color: DK.textMuted }}>Agent</InputLabel>
               <Select
                 value={formData.agentId}
                 label="Agent"
                 onChange={(e) => setFormData(prev => ({ ...prev, agentId: e.target.value }))}
+                sx={{ color: DK.text }}
               >
-                {AGENT_OPTIONS.map((a) => (
-                  <MenuItem key={a.id} value={a.id}>{a.label}</MenuItem>
-                ))}
+                {AGENT_OPTIONS.map((a) => {
+                  const agentData = getAgent(a.id);
+                  return (
+                    <MenuItem key={a.id} value={a.id}>
+                      {agentData?.emoji || '🤖'} {agentData?.name || a.label}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
             <TextField label="Title" fullWidth size="small" value={formData.title}
@@ -440,22 +557,38 @@ const GoalDashboard = () => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setFormOpen(false); setEditingId(null); }}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave} disabled={saving || !formData.agentId || !formData.title}>
-            {saving ? <CircularProgress size={20} /> : editingId ? 'Update' : 'Create'}
+          <Button onClick={() => { setFormOpen(false); setEditingId(null); }} sx={{ color: DK.textMuted }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || !formData.agentId || !formData.title}
+            sx={{ bgcolor: DK.accent, '&:hover': { bgcolor: '#0d9668' } }}
+          >
+            {saving ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : editingId ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ── Delete Confirmation Dialog ───────────────────────────────── */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, title: '' })} maxWidth="xs">
-        <DialogTitle>Delete Goal</DialogTitle>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, id: null, title: '' })}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            bgcolor: DK.surface,
+            border: `1px solid ${DK.border}`,
+            backgroundImage: 'none',
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: DK.text }}>⚠️ Delete Goal</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to delete &quot;{deleteDialog.title}&quot;?</Typography>
+          <Typography sx={{ color: DK.textMuted }}>Are you sure you want to delete &quot;{deleteDialog.title}&quot;?</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, title: '' })}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>Delete</Button>
+          <Button onClick={() => setDeleteDialog({ open: false, id: null, title: '' })} sx={{ color: DK.textMuted }}>Cancel</Button>
+          <Button variant="contained" sx={{ bgcolor: '#f85149', '&:hover': { bgcolor: '#da3633' } }} onClick={handleDelete}>Delete</Button>
         </DialogActions>
       </Dialog>
     </Paper>
