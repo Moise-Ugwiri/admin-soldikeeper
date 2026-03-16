@@ -184,9 +184,10 @@ const DarkPanel = ({ children, accent = MC.violet, sx = {} }) => (
  * ║              🎯  MAIN COMMAND CENTER COMPONENT              ║
  * ╚══════════════════════════════════════════════════════════════╝ */
 const AIAgentCommandCenter = () => {
-  const { token } = useAdminData();
+  useAdminData(); // ensure context is available
 
   /* ── state ── */
+  const token = localStorage.getItem('token');
   const [agents, setAgents]             = useState(STATIC_AGENTS);
   const [activities, setActivities]     = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -215,7 +216,7 @@ const AIAgentCommandCenter = () => {
    * ──────────────────────────────────────────────── */
   useEffect(() => {
     const fetchData = async () => {
-      if (!token) return;
+      if (!token) { setLoading(false); return; }
       try {
         setLoading(true);
         const base = process.env.REACT_APP_API_URL
