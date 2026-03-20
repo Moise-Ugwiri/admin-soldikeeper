@@ -36,6 +36,22 @@ const severityConfig = {
   emergency: { color: '#9c27b0', icon: ErrorIcon, label: 'Emergency' }
 };
 
+const getResumeStatus = (escalation) => {
+  switch (escalation.status) {
+    case 'resolved':
+      return { label: '✓ Agent Resumed', color: 'success' };
+    case 'rejected':
+      return { label: '✗ Task Cancelled', color: 'error' };
+    case 'auto_resolved':
+      return { label: '↻ Auto-resolved', color: 'info' };
+    case 'acknowledged':
+    case 'investigating':
+      return { label: '⏳ Under Review', color: 'warning' };
+    default:
+      return { label: '⏸ Paused', color: 'default' };
+  }
+};
+
 const EscalationDetailsDialog = ({ open, escalation, onClose, onRespond }) => {
   const [responseText, setResponseText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +161,14 @@ const EscalationDetailsDialog = ({ open, escalation, onClose, onRespond }) => {
               size="small"
               variant="outlined"
             />
+            {escalation.status !== 'pending' && (
+              <Chip
+                size="small"
+                label={getResumeStatus(escalation).label}
+                color={getResumeStatus(escalation).color}
+                variant="outlined"
+              />
+            )}
           </Box>
 
           {/* Deadline Alert */}

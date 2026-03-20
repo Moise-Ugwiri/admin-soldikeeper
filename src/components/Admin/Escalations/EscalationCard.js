@@ -53,6 +53,22 @@ const statusConfig = {
   resolved: { color: '#2196f3', label: 'Resolved' }
 };
 
+const getResumeStatus = (escalation) => {
+  switch (escalation.status) {
+    case 'resolved':
+      return { label: '✓ Agent Resumed', color: 'success' };
+    case 'rejected':
+      return { label: '✗ Task Cancelled', color: 'error' };
+    case 'auto_resolved':
+      return { label: '↻ Auto-resolved', color: 'info' };
+    case 'acknowledged':
+    case 'investigating':
+      return { label: '⏳ Under Review', color: 'warning' };
+    default:
+      return { label: '⏸ Paused', color: 'default' };
+  }
+};
+
 const EscalationCard = ({ escalation, onClick, onApprove, onReject, compact = false }) => {
   const config = severityConfig[escalation.severity] || severityConfig.warning;
   const SeverityIcon = config.icon;
@@ -97,16 +113,27 @@ const EscalationCard = ({ escalation, onClick, onApprove, onReject, compact = fa
               </Typography>
             </Box>
             
-            <Chip
-              label={statusStyle.label}
-              size="small"
-              sx={{
-                backgroundColor: statusStyle.color,
-                color: 'white',
-                fontWeight: 600,
-                fontSize: '0.75rem'
-              }}
-            />
+            <Box display="flex" alignItems="center" gap={0.5}>
+              <Chip
+                label={statusStyle.label}
+                size="small"
+                sx={{
+                  backgroundColor: statusStyle.color,
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.75rem'
+                }}
+              />
+              {escalation.status !== 'pending' && (
+                <Chip
+                  size="small"
+                  label={getResumeStatus(escalation).label}
+                  color={getResumeStatus(escalation).color}
+                  variant="outlined"
+                  sx={{ fontSize: '0.7rem', height: 22 }}
+                />
+              )}
+            </Box>
           </Box>
 
           <Box display="flex" alignItems="center" gap={1}>
