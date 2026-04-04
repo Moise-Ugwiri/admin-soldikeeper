@@ -123,6 +123,7 @@ const ComponentShowcase = React.lazy(() => import('./ComponentShowcase'));
 const AIAgentCommandCenter = React.lazy(() => import('./AIAgent/AIAgentCommandCenter'));
 const AdminDocumentation = React.lazy(() => import('./AdminDocumentation'));
 const CostManagement = React.lazy(() => import('./CostManagement'));
+const LLMManagement = React.lazy(() => import('./LLMManagement'));
 const MissionControl = React.lazy(() => import('./MissionControl'));
 
 // Loading fallback component
@@ -371,6 +372,18 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="AI Agent Command Center" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <AIAgentCommandCenter />
+              </Suspense>
+            </AdminErrorBoundary>
+          )
+        },
+        {
+          label: 'LLM Control',
+          shortLabel: 'LLM',
+          icon: <AIAgentIcon />,
+          component: (
+            <AdminErrorBoundary componentName="LLM Management" autoRetry maxRetries={2}>
+              <Suspense fallback={<ComponentLoader />}>
+                <LLMManagement />
               </Suspense>
             </AdminErrorBoundary>
           )
