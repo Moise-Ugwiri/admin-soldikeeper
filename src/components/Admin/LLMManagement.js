@@ -18,8 +18,47 @@ import api from '../../services/api';
 const PROVIDER_META = {
   'github-models/gpt-4.1': { label: 'GPT-4.1', color: '#10a37f', group: 'GitHub Models', cost: 'Free' },
   'github-models/gpt-4o':  { label: 'GPT-4o',  color: '#10a37f', group: 'GitHub Models', cost: 'Free' },
+  'github-models/gpt-4.1-mini': { label: 'GPT-4.1-mini', color: '#10a37f', group: 'GitHub Models', cost: 'Free' },
+  'github-models/gpt-4o-mini':  { label: 'GPT-4o-mini',  color: '#10a37f', group: 'GitHub Models', cost: 'Free' },
+  'github-models/o4-mini': { label: 'o4-mini', color: '#10a37f', group: 'GitHub Models', cost: 'Free' },
   'claude':  { label: 'Claude Sonnet', color: '#d97706', group: 'Anthropic', cost: 'Paid' },
   'grok':    { label: 'Grok-3',       color: '#6366f1', group: 'xAI',       cost: 'Paid' },
+  'openai':  { label: 'OpenAI Direct', color: '#10a37f', group: 'OpenAI',   cost: 'Paid' },
+};
+
+const MODEL_INFO = {
+  // GitHub Models — Free tier
+  'gpt-4.1':       { tier: '🟢 Free', note: 'Best for code — recommended primary' },
+  'gpt-4.1-mini':  { tier: '🟢 Free', note: 'Faster, cheaper alternative' },
+  'gpt-4.1-nano':  { tier: '🟢 Free', note: 'Ultra-fast, lightweight tasks' },
+  'gpt-4o':        { tier: '🟢 Free', note: 'Multimodal, previous gen flagship' },
+  'gpt-4o-mini':   { tier: '🟢 Free', note: 'Fast multimodal, low cost' },
+  'gpt-5':         { tier: '🟡 Free (Limited)', note: '⚠️ 1 req/min, 8/day' },
+  'gpt-5-mini':    { tier: '🟡 Free (Limited)', note: '⚠️ Heavily rate-limited' },
+  'o4-mini':       { tier: '🟢 Free', note: 'Reasoning model, uses max_completion_tokens' },
+  'o3-mini':       { tier: '🟢 Free', note: 'Reasoning model, previous gen' },
+  'Phi-4':         { tier: '🟢 Free', note: 'Microsoft open-source 14B' },
+  'Phi-4-mini':    { tier: '🟢 Free', note: 'Lightweight open-source' },
+  'Meta-Llama-3.1-405B-Instruct': { tier: '🟢 Free', note: 'Meta flagship 405B' },
+  'Meta-Llama-3.1-70B-Instruct':  { tier: '🟢 Free', note: 'Meta mid-tier 70B' },
+  'Meta-Llama-3.1-8B-Instruct':   { tier: '🟢 Free', note: 'Meta lightweight 8B' },
+  'Mistral-Large-2':  { tier: '🟢 Free', note: 'Mistral flagship' },
+  'Mistral-Small':    { tier: '🟢 Free', note: 'Mistral lightweight' },
+  'Cohere-command-r-plus': { tier: '🟢 Free', note: 'Cohere RAG-optimized' },
+  'Cohere-command-r':      { tier: '🟢 Free', note: 'Cohere lightweight' },
+  'DeepSeek-R1':     { tier: '🟢 Free', note: 'DeepSeek reasoning model' },
+  // Anthropic — Paid
+  'claude-sonnet-4-6':          { tier: '🔴 Paid', note: 'Latest Sonnet, best balance' },
+  'claude-sonnet-4-5-20241022': { tier: '🔴 Paid', note: 'Previous Sonnet 4.5' },
+  'claude-haiku-4-5':           { tier: '🔴 Paid', note: 'Fast & cheap Anthropic' },
+  'claude-opus-4':              { tier: '🔴 Paid', note: 'Most capable, expensive' },
+  'claude-3-5-sonnet-20241022': { tier: '🔴 Paid', note: 'Claude 3.5 Sonnet' },
+  'claude-3-5-haiku-20241022':  { tier: '🔴 Paid', note: 'Claude 3.5 Haiku' },
+  'claude-3-opus-20240229':     { tier: '🔴 Paid', note: 'Claude 3 Opus' },
+  // xAI — Paid
+  'grok-3':      { tier: '🔴 Paid', note: 'xAI flagship' },
+  'grok-3-mini': { tier: '🔴 Paid', note: 'xAI lightweight' },
+  'grok-2':      { tier: '🔴 Paid', note: 'Previous gen' },
 };
 
 function formatNumber(n) {
@@ -272,30 +311,44 @@ export default function LLMManagement() {
           </Typography>
 
           <FormControl fullWidth sx={{ mb: 2, mt: 1 }}>
-            <InputLabel>Primary Model (Free)</InputLabel>
+            <InputLabel>Primary Model (Free — GitHub Models)</InputLabel>
             <Select
               value={editConfig.primaryModels?.[0] || 'gpt-4.1'}
-              label="Primary Model (Free)"
+              label="Primary Model (Free — GitHub Models)"
               onChange={(e) => {
                 const current = editConfig.primaryModels || ['gpt-4.1', 'gpt-4o'];
                 setEditConfig({ ...editConfig, primaryModels: [e.target.value, ...current.filter(m => m !== e.target.value)] });
               }}
             >
               {(availableModels?.githubModels || []).map(m => (
-                <MenuItem key={m} value={m}>{m}</MenuItem>
+                <MenuItem key={m} value={m}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <span>{m}</span>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                      {MODEL_INFO[m]?.tier || '🟢 Free'} — {MODEL_INFO[m]?.note || ''}
+                    </Typography>
+                  </Box>
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
 
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Tool-Calling Model</InputLabel>
+            <InputLabel>Tool-Calling Model (Free — GitHub Models)</InputLabel>
             <Select
               value={editConfig.toolModel || 'gpt-4.1'}
-              label="Tool-Calling Model"
+              label="Tool-Calling Model (Free — GitHub Models)"
               onChange={(e) => setEditConfig({ ...editConfig, toolModel: e.target.value })}
             >
               {(availableModels?.githubModels || []).map(m => (
-                <MenuItem key={m} value={m}>{m}</MenuItem>
+                <MenuItem key={m} value={m}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <span>{m}</span>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                      {MODEL_INFO[m]?.tier || '🟢 Free'} — {MODEL_INFO[m]?.note || ''}
+                    </Typography>
+                  </Box>
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -304,27 +357,41 @@ export default function LLMManagement() {
           <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>Paid Fallbacks (only used when GitHub Models fails)</Typography>
 
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Claude Model</InputLabel>
+            <InputLabel>Claude Model (Anthropic — Paid)</InputLabel>
             <Select
               value={editConfig.claudeModel || 'claude-sonnet-4-6'}
-              label="Claude Model"
+              label="Claude Model (Anthropic — Paid)"
               onChange={(e) => setEditConfig({ ...editConfig, claudeModel: e.target.value })}
             >
               {(availableModels?.claude || []).map(m => (
-                <MenuItem key={m} value={m}>{m}</MenuItem>
+                <MenuItem key={m} value={m}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <span>{m}</span>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                      {MODEL_INFO[m]?.note || ''}
+                    </Typography>
+                  </Box>
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
 
           <FormControl fullWidth>
-            <InputLabel>Grok Model</InputLabel>
+            <InputLabel>Grok Model (xAI — Paid)</InputLabel>
             <Select
               value={editConfig.grokModel || 'grok-3'}
-              label="Grok Model"
+              label="Grok Model (xAI — Paid)"
               onChange={(e) => setEditConfig({ ...editConfig, grokModel: e.target.value })}
             >
               {(availableModels?.grok || []).map(m => (
-                <MenuItem key={m} value={m}>{m}</MenuItem>
+                <MenuItem key={m} value={m}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <span>{m}</span>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                      {MODEL_INFO[m]?.note || ''}
+                    </Typography>
+                  </Box>
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
