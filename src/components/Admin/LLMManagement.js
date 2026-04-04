@@ -10,7 +10,8 @@ import {
 import {
   SmartToy, Speed, Warning, CheckCircle, Error,
   Refresh, Settings, PlayArrow, Token,
-  CloudQueue, Memory, ArrowForward, Circle
+  CloudQueue, Memory, ArrowForward, Circle,
+  ArrowUpward, ArrowDownward
 } from '@mui/icons-material';
 import websocketService from '../../services/websocketService';
 import api from '../../services/api';
@@ -258,18 +259,19 @@ export default function LLMManagement() {
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" fontWeight={600} gutterBottom>🔄 Failover Chain</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', py: 1 }}>
-          {(config?.primaryModels || ['gpt-4.1', 'gpt-4o']).map((m, i) => (
-            <React.Fragment key={m}>
-              <Chip icon={<CloudQueue />} label={m} color="success" variant={i === 0 ? 'filled' : 'outlined'} sx={{ fontWeight: i === 0 ? 700 : 400 }} />
-              <ArrowForward sx={{ color: 'text.disabled', fontSize: 18 }} />
-            </React.Fragment>
-          ))}
-          <Chip icon={<Memory />} label={config?.claudeModel || 'claude-sonnet-4-6'} color="warning" variant="outlined" />
-          <ArrowForward sx={{ color: 'text.disabled', fontSize: 18 }} />
-          <Chip icon={<SmartToy />} label={config?.grokModel || 'grok-3'} color="secondary" variant="outlined" />
+          {(config?.failoverChain || ['github-models', 'claude', 'grok']).map((provider, i, arr) => {
+            const chainMeta = { 'github-models': { icon: <CloudQueue />, color: 'success', label: `GitHub: ${(config?.primaryModels || ['gpt-4.1'])[0]}` }, claude: { icon: <Memory />, color: 'warning', label: config?.claudeModel || 'claude-sonnet-4-6' }, grok: { icon: <SmartToy />, color: 'secondary', label: config?.grokModel || 'grok-3' } };
+            const m = chainMeta[provider] || { icon: <Circle />, color: 'default', label: provider };
+            return (
+              <React.Fragment key={provider}>
+                <Chip icon={m.icon} label={m.label} color={m.color} variant={i === 0 ? 'filled' : 'outlined'} sx={{ fontWeight: i === 0 ? 700 : 400 }} />
+                {i < arr.length - 1 && <ArrowForward sx={{ color: 'text.disabled', fontSize: 18 }} />}
+              </React.Fragment>
+            );
+          })}
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          Green = Free (GitHub Models) • Orange = Anthropic credits • Purple = xAI credits
+          First = Primary • Green = Free (GitHub Models) • Orange = Anthropic • Purple = xAI
         </Typography>
       </Paper>
 
@@ -310,11 +312,48 @@ export default function LLMManagement() {
             Changes take effect immediately. No restart needed.
           </Typography>
 
-          <FormControl fullWidth sx={{ mb: 2, mt: 1 }}>
-            <InputLabel>Primary Model (Free — GitHub Models)</InputLabel>
+          {/* Failover Chain Order */}
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+            🔄 Provider Priority (drag to reorder)
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+            First provider is tried first. Use ▲▼ to set a paid model as primary when needed.
+          </Typography>
+          <Paper variant="outlined" sx={{ mb: 3, overflow: 'hidden' }}>
+            {(editConfig.failoverChain || ['github-models', 'claude', 'grok']).map((provider, idx, arr) => {
+              const meta = { 'github-models': { label: '☁️ GitHub Models', color: 'success', cost: 'Free' }, claude: { label: '🟠 Anthropic Claude', color: 'warning', cost: 'Paid' }, grok: { label: '🟣 xAI Grok', color: 'secondary', cost: 'Paid' } };
+              const info = meta[provider] || { label: provider, color: 'default', cost: '?' };
+              return (
+                <Box key={provider} sx={{ display: 'flex', alignItems: 'center', px: 2, py: 1.5, borderBottom: idx < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider', bgcolor: idx === 0 ? alpha(theme.palette.primary.main, 0.06) : 'transparent' }}>
+                  <Typography variant="body2" sx={{ fontWeight: idx === 0 ? 700 : 400, flex: 1 }}>
+                    {idx + 1}. {info.label}
+                  </Typography>
+                  <Chip size="small" label={idx === 0 ? 'PRIMARY' : info.cost} color={idx === 0 ? 'primary' : info.cost === 'Free' ? 'success' : 'error'} variant={idx === 0 ? 'filled' : 'outlined'} sx={{ mr: 1 }} />
+                  <IconButton size="small" disabled={idx === 0} onClick={() => {
+                    const chain = [...(editConfig.failoverChain || ['github-models', 'claude', 'grok'])];
+                    [chain[idx - 1], chain[idx]] = [chain[idx], chain[idx - 1]];
+                    setEditConfig({ ...editConfig, failoverChain: chain });
+                  }}><ArrowUpward fontSize="small" /></IconButton>
+                  <IconButton size="small" disabled={idx === arr.length - 1} onClick={() => {
+                    const chain = [...(editConfig.failoverChain || ['github-models', 'claude', 'grok'])];
+                    [chain[idx], chain[idx + 1]] = [chain[idx + 1], chain[idx]];
+                    setEditConfig({ ...editConfig, failoverChain: chain });
+                  }}><ArrowDownward fontSize="small" /></IconButton>
+                </Box>
+              );
+            })}
+          </Paper>
+
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
+            🎯 Model Selection (per provider)
+          </Typography>
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>GitHub Models — Primary</InputLabel>
             <Select
               value={editConfig.primaryModels?.[0] || 'gpt-4.1'}
-              label="Primary Model (Free — GitHub Models)"
+              label="GitHub Models — Primary"
               onChange={(e) => {
                 const current = editConfig.primaryModels || ['gpt-4.1', 'gpt-4o'];
                 setEditConfig({ ...editConfig, primaryModels: [e.target.value, ...current.filter(m => m !== e.target.value)] });
@@ -334,10 +373,10 @@ export default function LLMManagement() {
           </FormControl>
 
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Tool-Calling Model (Free — GitHub Models)</InputLabel>
+            <InputLabel>GitHub Models — Tool-Calling</InputLabel>
             <Select
               value={editConfig.toolModel || 'gpt-4.1'}
-              label="Tool-Calling Model (Free — GitHub Models)"
+              label="GitHub Models — Tool-Calling"
               onChange={(e) => setEditConfig({ ...editConfig, toolModel: e.target.value })}
             >
               {(availableModels?.githubModels || []).map(m => (
@@ -353,14 +392,11 @@ export default function LLMManagement() {
             </Select>
           </FormControl>
 
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>Paid Fallbacks (only used when GitHub Models fails)</Typography>
-
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Claude Model (Anthropic — Paid)</InputLabel>
+            <InputLabel>Anthropic — Claude Model</InputLabel>
             <Select
               value={editConfig.claudeModel || 'claude-sonnet-4-6'}
-              label="Claude Model (Anthropic — Paid)"
+              label="Anthropic — Claude Model"
               onChange={(e) => setEditConfig({ ...editConfig, claudeModel: e.target.value })}
             >
               {(availableModels?.claude || []).map(m => (
@@ -377,10 +413,10 @@ export default function LLMManagement() {
           </FormControl>
 
           <FormControl fullWidth>
-            <InputLabel>Grok Model (xAI — Paid)</InputLabel>
+            <InputLabel>xAI — Grok Model</InputLabel>
             <Select
               value={editConfig.grokModel || 'grok-3'}
-              label="Grok Model (xAI — Paid)"
+              label="xAI — Grok Model"
               onChange={(e) => setEditConfig({ ...editConfig, grokModel: e.target.value })}
             >
               {(availableModels?.grok || []).map(m => (
