@@ -4,15 +4,15 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip,
-  LinearProgress, Alert, Divider, Switch, FormControlLabel,
+  Alert, Divider,
   CircularProgress, Stack, alpha, useTheme
 } from '@mui/material';
 import {
-  SmartToy, Speed, TrendingUp, Warning, CheckCircle, Error,
-  Refresh, Settings, PlayArrow, SwapHoriz, Timer, Token,
+  SmartToy, Speed, Warning, CheckCircle, Error,
+  Refresh, Settings, PlayArrow, Token,
   CloudQueue, Memory, ArrowForward, Circle
 } from '@mui/icons-material';
-import { useAdmin } from '../../contexts/AdminContext';
+import websocketService from '../../services/websocketService';
 import api from '../../services/api';
 
 const PROVIDER_META = {
@@ -38,7 +38,7 @@ export default function LLMManagement() {
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(null);
   const [editConfig, setEditConfig] = useState({});
-  const { socket } = useAdmin();
+  // WebSocket is managed by websocketService singleton
 
   const fetchMetrics = useCallback(async () => {
     try {
@@ -63,11 +63,10 @@ export default function LLMManagement() {
 
   // Real-time WebSocket updates
   useEffect(() => {
-    if (!socket) return;
     const handler = (data) => setMetrics(data);
-    socket.on('llm:metrics:update', handler);
-    return () => socket.off('llm:metrics:update', handler);
-  }, [socket]);
+    websocketService.on('llm:metrics:update', handler);
+    return () => websocketService.off('llm:metrics:update', handler);
+  }, []);
 
   const handleTest = async (provider, model) => {
     setTesting(provider);
