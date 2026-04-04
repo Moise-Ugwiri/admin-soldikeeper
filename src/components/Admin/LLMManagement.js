@@ -4,14 +4,15 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip,
-  Alert, Divider,
+  Alert, Divider, Tabs, Tab, LinearProgress,
   CircularProgress, Stack, alpha, useTheme
 } from '@mui/material';
 import {
   SmartToy, Speed, Warning, CheckCircle, Error,
   Refresh, Settings, PlayArrow, Token,
   CloudQueue, Memory, ArrowForward, Circle,
-  ArrowUpward, ArrowDownward
+  ArrowUpward, ArrowDownward, Hub, Schedule,
+  Person, AdminPanelSettings, Telegram, Build
 } from '@mui/icons-material';
 import websocketService from '../../services/websocketService';
 import api from '../../services/api';
@@ -68,6 +69,250 @@ function formatNumber(n) {
   return String(n);
 }
 
+// Service metadata: descriptions, categories, icons, and cost characteristics
+const SERVICE_META = {
+  'user-chat':      { label: 'Keeper AI Chat',     category: 'User-Facing',  icon: <Person />,             trigger: 'User message',   frequency: 'Per message',    maxCalls: 1,  maxTokens: 512 },
+  'cortex-chat':    { label: 'Cortex Advisor',      category: 'User-Facing',  icon: <Person />,             trigger: 'User message',   frequency: 'Per message',    maxCalls: 1,  maxTokens: 512 },
+  'insights-chat':  { label: 'Insights Q&A',        category: 'User-Facing',  icon: <Person />,             trigger: 'User question',  frequency: 'Per question',   maxCalls: 1,  maxTokens: 350 },
+  'insights-generation': { label: 'AI Insights Gen', category: 'User-Facing', icon: <SmartToy />,           trigger: 'Page load',      frequency: 'Per load (1hr cache)', maxCalls: 1, maxTokens: 2048 },
+  'telegram':       { label: 'Telegram Bot',        category: 'Admin',        icon: <Telegram />,           trigger: 'Admin message',  frequency: 'Per message',    maxCalls: 5,  maxTokens: 1024 },
+  'intent-classifier': { label: 'Intent Classifier', category: 'Admin',       icon: <AdminPanelSettings />, trigger: 'Admin command',  frequency: 'Per command',    maxCalls: 1,  maxTokens: 200 },
+  'ai-admin-agent': { label: 'Admin AI Agent',      category: 'Admin',        icon: <AdminPanelSettings />, trigger: 'Admin /cortex',  frequency: 'Per question',   maxCalls: 1,  maxTokens: 1024 },
+  'reply-ticket':   { label: 'Ticket Reply',        category: 'Admin',        icon: <AdminPanelSettings />, trigger: 'Ticket reply',   frequency: 'Per ticket',     maxCalls: 1,  maxTokens: 512 },
+  'reply-all-tickets': { label: 'Batch Ticket Reply', category: 'Admin',     icon: <AdminPanelSettings />, trigger: 'Batch reply',    frequency: 'N per batch',    maxCalls: 'N', maxTokens: 512 },
+  'nl-query':       { label: 'NL Query Engine',     category: 'Admin',        icon: <AdminPanelSettings />, trigger: 'Admin DB query', frequency: 'Per query',      maxCalls: 1,  maxTokens: 1024 },
+  'weekly-strategy-briefing': { label: 'Strategy Briefing', category: 'Scheduled', icon: <Schedule />,      trigger: 'Cron job',       frequency: 'Daily/Weekly/Monthly', maxCalls: 1, maxTokens: 600 },
+  'daily-digest':   { label: 'Daily Digest',        category: 'Scheduled',    icon: <Schedule />,           trigger: 'Cron 8AM',       frequency: 'Daily',          maxCalls: 1,  maxTokens: 600 },
+  'monthly-digest': { label: 'Monthly Digest',      category: 'Scheduled',    icon: <Schedule />,           trigger: 'Cron 1st',       frequency: 'Monthly',        maxCalls: 1,  maxTokens: 600 },
+  'security-analysis': { label: 'Security Analysis', category: 'Pipeline',    icon: <Build />,              trigger: 'Security event', frequency: 'Per event',      maxCalls: 1,  maxTokens: 1024 },
+  'financial-pipeline': { label: 'Financial Pipeline', category: 'Pipeline',  icon: <Build />,              trigger: 'Anomaly',        frequency: 'Per anomaly',    maxCalls: 1,  maxTokens: 1024 },
+  'agentCodePipeline': { label: 'Code Generation',  category: 'Pipeline',     icon: <Build />,              trigger: 'Code request',   frequency: 'Per request',    maxCalls: 1,  maxTokens: 16384 },
+  'agent-pipeline': { label: 'Agent Pipeline',      category: 'Pipeline',     icon: <Build />,              trigger: 'Agent task',     frequency: 'Per task',       maxCalls: 1,  maxTokens: 1024 },
+  'backend':        { label: 'Backend Service',     category: 'Pipeline',     icon: <Build />,              trigger: 'Internal',       frequency: 'Sporadic',       maxCalls: 1,  maxTokens: 1024 },
+};
+
+const CATEGORY_COLORS = {
+  'User-Facing': 'success',
+  'Admin': 'warning',
+  'Scheduled': 'info',
+  'Pipeline': 'secondary',
+};
+
+// ── Service Map Sub-Tab Component ──────────────────────────────
+function ServiceMapTab({ metrics, theme }) {
+  const services = metrics?.services || {};
+  const serviceRoutes = metrics?.serviceRoutes || {};
+  const ghQuota = metrics?.githubModelsQuota || { used: 0, limit: 50, softLimit: 40 };
+
+  // Merge API data with static metadata
+  const serviceList = Object.keys({ ...SERVICE_META, ...services }).map(key => {
+    const meta = SERVICE_META[key] || { label: key, category: 'Unknown', icon: <Circle />, trigger: '—', frequency: '—', maxCalls: '?', maxTokens: '?' };
+    const stats = services[key] || { requests: 0, tokens_in: 0, tokens_out: 0, total_tokens: 0, errors: 0, last_used: null, last_provider: null };
+    const route = serviceRoutes[key] || stats.route || ['github-models', 'claude', 'grok'];
+    return { key, ...meta, ...stats, route };
+  });
+
+  // Sort: by category, then by requests descending
+  const categoryOrder = ['User-Facing', 'Admin', 'Scheduled', 'Pipeline', 'Unknown'];
+  serviceList.sort((a, b) => {
+    const catDiff = categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category);
+    return catDiff !== 0 ? catDiff : b.requests - a.requests;
+  });
+
+  // Category-level aggregates
+  const categoryStats = {};
+  serviceList.forEach(s => {
+    if (!categoryStats[s.category]) categoryStats[s.category] = { requests: 0, tokens: 0, errors: 0 };
+    categoryStats[s.category].requests += s.requests;
+    categoryStats[s.category].tokens += s.total_tokens;
+    categoryStats[s.category].errors += s.errors;
+  });
+
+  const totalServiceRequests = serviceList.reduce((sum, s) => sum + s.requests, 0);
+
+  const providerChipColor = (p) => {
+    if (p?.startsWith('github-models')) return 'success';
+    if (p === 'claude') return 'warning';
+    if (p === 'grok') return 'secondary';
+    return 'default';
+  };
+
+  return (
+    <Box>
+      {/* GitHub Models Quota Bar */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            <CloudQueue sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
+            GitHub Models Daily Quota
+          </Typography>
+          <Typography variant="body2" fontWeight={600}>
+            {ghQuota.used} / {ghQuota.limit} used
+            {ghQuota.used >= ghQuota.limit && <Chip label="EXHAUSTED" size="small" color="error" sx={{ ml: 1 }} />}
+            {ghQuota.used >= ghQuota.softLimit && ghQuota.used < ghQuota.limit && <Chip label="SOFT LIMIT" size="small" color="warning" sx={{ ml: 1 }} />}
+          </Typography>
+        </Box>
+        <Box sx={{ position: 'relative' }}>
+          <LinearProgress
+            variant="determinate"
+            value={Math.min((ghQuota.used / ghQuota.limit) * 100, 100)}
+            sx={{
+              height: 14, borderRadius: 1,
+              bgcolor: alpha(theme.palette.grey[300], 0.3),
+              '& .MuiLinearProgress-bar': {
+                bgcolor: ghQuota.used >= ghQuota.limit ? theme.palette.error.main
+                  : ghQuota.used >= ghQuota.softLimit ? theme.palette.warning.main
+                  : theme.palette.success.main,
+                borderRadius: 1
+              }
+            }}
+          />
+          {/* Soft limit marker */}
+          <Box sx={{ position: 'absolute', left: `${(ghQuota.softLimit / ghQuota.limit) * 100}%`, top: -2, bottom: -2, width: 2, bgcolor: theme.palette.warning.main, zIndex: 1 }} />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">0</Typography>
+          <Typography variant="caption" color="warning.main">← Soft limit ({ghQuota.softLimit}): user-chat only beyond this</Typography>
+          <Typography variant="caption" color="text.secondary">{ghQuota.limit}</Typography>
+        </Box>
+      </Paper>
+
+      {/* Category Summary Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {categoryOrder.filter(c => categoryStats[c]).map(cat => {
+          const cs = categoryStats[cat];
+          const catColor = CATEGORY_COLORS[cat] || 'default';
+          return (
+            <Grid size={{ xs: 6, sm: 3 }} key={cat}>
+              <Card sx={{ borderLeft: `4px solid`, borderColor: `${catColor}.main` }}>
+                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  <Typography variant="caption" color="text.secondary">{cat}</Typography>
+                  <Typography variant="h6" fontWeight={700}>{formatNumber(cs.requests)} <Typography component="span" variant="caption">calls</Typography></Typography>
+                  <Typography variant="caption" color="text.secondary">{formatNumber(cs.tokens)} tokens • {cs.errors} errors</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
+
+      {/* Service Map Table */}
+      <Paper sx={{ overflow: 'hidden' }}>
+        <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
+          <Typography variant="h6" fontWeight={600}>
+            <Hub sx={{ fontSize: 20, mr: 0.5, verticalAlign: 'text-bottom' }} />
+            Service Map ({serviceList.length} services)
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Real-time LLM usage per service — sorted by category then volume
+          </Typography>
+        </Box>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: alpha(theme.palette.grey[500], 0.06) }}>
+                <TableCell><strong>Service</strong></TableCell>
+                <TableCell><strong>Category</strong></TableCell>
+                <TableCell align="center"><strong>Route</strong></TableCell>
+                <TableCell align="right"><strong>Calls</strong></TableCell>
+                <TableCell align="right"><strong>Tokens</strong></TableCell>
+                <TableCell align="right"><strong>Errors</strong></TableCell>
+                <TableCell><strong>Last Provider</strong></TableCell>
+                <TableCell><strong>Last Used</strong></TableCell>
+                <TableCell align="center"><strong>Trigger</strong></TableCell>
+                <TableCell align="center"><strong>Max/Trigger</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {serviceList.map((svc) => {
+                const catColor = CATEGORY_COLORS[svc.category] || 'default';
+                const pct = totalServiceRequests > 0 ? Math.round((svc.requests / totalServiceRequests) * 100) : 0;
+                return (
+                  <TableRow
+                    key={svc.key}
+                    sx={{
+                      bgcolor: svc.requests > 0 ? alpha(theme.palette.primary.main, 0.02) : 'inherit',
+                      '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.06) }
+                    }}
+                  >
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {React.cloneElement(svc.icon, { sx: { fontSize: 18, color: 'text.secondary' } })}
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>{svc.label}</Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: 10 }}>{svc.key}</Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={svc.category} size="small" color={catColor} variant="outlined" sx={{ fontSize: 11 }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {(svc.route || []).map((p, i, arr) => (
+                          <React.Fragment key={p}>
+                            <Chip
+                              label={p === 'github-models' ? 'GH' : p === 'claude' ? 'CL' : 'GK'}
+                              size="small"
+                              color={providerChipColor(p)}
+                              variant={i === 0 ? 'filled' : 'outlined'}
+                              sx={{ fontSize: 10, height: 20, '& .MuiChip-label': { px: 0.5 } }}
+                            />
+                            {i < arr.length - 1 && <ArrowForward sx={{ fontSize: 10, color: 'text.disabled' }} />}
+                          </React.Fragment>
+                        ))}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                        <strong>{formatNumber(svc.requests)}</strong>
+                        {pct > 0 && <Typography variant="caption" color="text.secondary">({pct}%)</Typography>}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right">{formatNumber(svc.total_tokens)}</TableCell>
+                    <TableCell align="right" sx={{ color: svc.errors > 0 ? 'error.main' : 'inherit' }}>{svc.errors || '—'}</TableCell>
+                    <TableCell>
+                      {svc.last_provider
+                        ? <Chip label={svc.last_provider} size="small" color={providerChipColor(svc.last_provider)} variant="outlined" sx={{ fontSize: 11 }} />
+                        : <Typography variant="caption" color="text.disabled">—</Typography>
+                      }
+                    </TableCell>
+                    <TableCell>
+                      {svc.last_used
+                        ? <Tooltip title={new Date(svc.last_used).toLocaleString()}><Typography variant="caption">{_timeAgo(svc.last_used)}</Typography></Tooltip>
+                        : <Typography variant="caption" color="text.disabled">Never</Typography>
+                      }
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="caption">{svc.trigger}</Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={`${svc.maxCalls}×${typeof svc.maxTokens === 'number' ? formatNumber(svc.maxTokens) : svc.maxTokens}t`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ fontSize: 10, height: 20, fontFamily: 'monospace' }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    </Box>
+  );
+}
+
+function _timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
+}
+
 export default function LLMManagement() {
   const theme = useTheme();
   const [metrics, setMetrics] = useState(null);
@@ -78,6 +323,7 @@ export default function LLMManagement() {
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(null);
   const [editConfig, setEditConfig] = useState({});
+  const [activeTab, setActiveTab] = useState(0);
   // WebSocket is managed by websocketService singleton
 
   const fetchMetrics = useCallback(async () => {
@@ -160,6 +406,20 @@ export default function LLMManagement() {
         </Stack>
       </Box>
 
+      {/* Sub-Tabs */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, v) => setActiveTab(v)}
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab icon={<Speed />} iconPosition="start" label="Overview" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<Hub />} iconPosition="start" label="Service Map" sx={{ textTransform: 'none', fontWeight: 600 }} />
+        </Tabs>
+      </Paper>
+
+      {/* Tab: Overview */}
+      {activeTab === 0 && (<>
       {/* KPI Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {[
@@ -302,6 +562,12 @@ export default function LLMManagement() {
             </Table>
           </TableContainer>
         </Paper>
+      )}
+      </>)}
+
+      {/* Tab: Service Map */}
+      {activeTab === 1 && (
+        <ServiceMapTab metrics={metrics} theme={theme} />
       )}
 
       {/* Config Dialog */}
