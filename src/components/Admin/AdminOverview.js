@@ -95,6 +95,7 @@ import { useAdminData } from '../../contexts/AdminContext';
 import { exportToCSV, exportToExcel } from '../../utils/exportUtils';
 import { downloadReport } from '../../utils/pdfReportGenerator';
 import websocketService from '../../services/websocketService';
+import { AIAgentWidget } from './AIAgent';
 
 const AdminOverview = () => {
   const { t } = useTranslation();
@@ -1293,6 +1294,11 @@ const AdminOverview = () => {
               )}
             </CardContent>
           </Card>
+        </Grid>
+
+        {/* AI Admin Agent Widget */}
+        <Grid item xs={12} md={6}>
+          <AIAgentWidget />
         </Grid>
       </Grid>
 

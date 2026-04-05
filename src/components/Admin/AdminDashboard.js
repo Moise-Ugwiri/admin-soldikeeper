@@ -100,7 +100,6 @@ import { PermissionProvider, PermissionGate, PERMISSIONS } from './shared/Permis
 
 // AI Agent Context Provider
 import { AIAgentProvider } from '../../contexts/AIAgentContext';
-import { AIAgentWidget } from './AIAgent';
 
 // Admin onboarding and help components
 import AdminOnboardingTour from './AdminOnboardingTour';
@@ -1402,8 +1401,6 @@ const AdminDashboard = () => {
           </Dialog>
         )}
 
-        {/* AI Agent Widget - Floating */}
-        <AIAgentWidget />
       </Box>
     </Box>
   );
