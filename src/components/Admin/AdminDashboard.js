@@ -83,7 +83,6 @@ import {
   Shield as ShieldIcon,
   BarChart as BarChartIcon,
   Chat as ChatIcon,
-  RocketLaunch as MissionControlIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
@@ -123,7 +122,7 @@ const AIAgentCommandCenter = React.lazy(() => import('./AIAgent/AIAgentCommandCe
 const AdminDocumentation = React.lazy(() => import('./AdminDocumentation'));
 const CostManagement = React.lazy(() => import('./CostManagement'));
 const LLMManagement = React.lazy(() => import('./LLMManagement'));
-const MissionControl = React.lazy(() => import('./MissionControl'));
+
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -425,18 +424,6 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="Activity Log" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <ActivityLog />
-              </Suspense>
-            </AdminErrorBoundary>
-          )
-        },
-        {
-          label: 'Mission Control',
-          shortLabel: 'Mission',
-          icon: <MissionControlIcon />,
-          component: (
-            <AdminErrorBoundary componentName="Mission Control" autoRetry maxRetries={2}>
-              <Suspense fallback={<ComponentLoader />}>
-                <MissionControl />
               </Suspense>
             </AdminErrorBoundary>
           )
