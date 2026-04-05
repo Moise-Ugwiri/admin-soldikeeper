@@ -247,21 +247,40 @@ const AIAgentCommandCenter = () => {
         || 'https://soldikeeper-backend-production.up.railway.app/api';
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [statsRes, activityRes] = await Promise.all([
+      const [statsRes, activityRes, fleetRes] = await Promise.all([
         axios.get(`${base}/admin/agents/stats`,            { headers }),
         axios.get(`${base}/admin/agents/activity?limit=100`, { headers }),
+        axios.get(`${base}/admin/agent-management/fleet-status`, { headers }).catch(() => null),
       ]);
 
-      if (statsRes.data.success && statsRes.data.agents) {
-        setAgents(prev => prev.map(agent => {
-          const real = statsRes.data.agents.find(a => a.agentId === agent.id);
-          return real
-            ? { ...agent, status: real.status || 'idle',
-                currentTask: real.currentTask || agent.currentTask,
-                load: real.load || 0 }
-            : agent;
-        }));
+      // Build a lookup of real fleet data (totalExecutions, avgResponseTime, lastExecution, etc.)
+      const fleetMap = {};
+      if (fleetRes?.data?.success && fleetRes.data.data?.agents) {
+        fleetRes.data.data.agents.forEach(a => { fleetMap[a.id] = a; });
       }
+
+      setAgents(prev => prev.map(agent => {
+        const stats = statsRes.data?.success && statsRes.data.agents
+          ? statsRes.data.agents.find(a => a.agentId === agent.id)
+          : null;
+        const fleet = fleetMap[agent.id] || null;
+
+        return {
+          ...agent,
+          // Real-time status from stats endpoint
+          status: stats?.status || fleet?.status || agent.status,
+          currentTask: stats?.currentTask || fleet?.currentTask || agent.currentTask,
+          load: stats?.load ?? fleet?.load ?? agent.load,
+          // All-time metrics from fleet-status endpoint
+          tasksCompleted: fleet?.totalExecutions ?? agent.tasksCompleted,
+          avgResponseTime: fleet?.avgResponseTime ?? agent.avgResponseTime,
+          lastActive: fleet?.lastExecution || fleet?.lastHeartbeat || agent.lastActive,
+          // Today's stats
+          tasksToday: fleet?.tasksToday ?? 0,
+          successRate: fleet?.successRate ?? null,
+          autonomyLevel: fleet?.autonomyLevel ?? agent.autonomy,
+        };
+      }));
 
       if (activityRes.data.success) {
         setActivities(activityRes.data.activities || []);

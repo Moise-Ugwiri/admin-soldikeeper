@@ -29,12 +29,12 @@ export const AGENTS = [
     ],
     autonomy: 95,
     description: 'Supreme coordinator of the multi-agent system. Decomposes tasks, delegates to specialists, verifies integration, and ships.',
-    currentTask: 'Orchestrating Mission Control UI redesign',
-    status: 'busy',
-    load: 65,
-    tasksCompleted: 1247,
-    avgResponseTime: 2.3,
-    lastActive: new Date().toISOString(),
+    currentTask: null,
+    status: 'idle',
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -168,10 +168,10 @@ export const AGENTS = [
     description: 'Guards the authentication pipeline and enforces security policies.',
     currentTask: null,
     status: 'idle',
-    load: 12,
-    tasksCompleted: 523,
-    avgResponseTime: 1.8,
-    lastActive: new Date(Date.now() - 300000).toISOString(),
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -280,12 +280,12 @@ export const AGENTS = [
     domains: ['Transaction Engine', 'Budget Computation', 'Rollover System', 'Recurring Transactions'],
     autonomy: 50,
     description: 'Owns the financial engine. Processes transactions, calculates budgets.',
-    currentTask: 'Calculating monthly budget allocations',
-    status: 'busy',
-    load: 34,
-    tasksCompleted: 1892,
-    avgResponseTime: 3.1,
-    lastActive: new Date().toISOString(),
+    currentTask: null,
+    status: 'idle',
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -396,10 +396,10 @@ export const AGENTS = [
     description: 'Processes receipts and documents via OCR and LLM.',
     currentTask: null,
     status: 'idle',
-    load: 8,
-    tasksCompleted: 687,
-    avgResponseTime: 4.2,
-    lastActive: new Date(Date.now() - 600000).toISOString(),
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -506,12 +506,12 @@ export const AGENTS = [
     domains: ['LLM Orchestration', 'Financial Insights', 'NLP', 'Pattern Recognition'],
     autonomy: 50,
     description: 'AI brain. Generates insights and orchestrates LLMs.',
-    currentTask: 'Analyzing spending patterns',
-    status: 'busy',
-    load: 45,
-    tasksCompleted: 934,
-    avgResponseTime: 5.7,
-    lastActive: new Date().toISOString(),
+    currentTask: null,
+    status: 'idle',
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -634,10 +634,10 @@ export const AGENTS = [
     description: 'Manages payments and subscriptions via Stripe.',
     currentTask: null,
     status: 'idle',
-    load: 23,
-    tasksCompleted: 412,
-    avgResponseTime: 2.1,
-    lastActive: new Date(Date.now() - 900000).toISOString(),
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -754,12 +754,12 @@ export const AGENTS = [
     domains: ['Expense Splitting', 'Debt Simplification', 'Settlement Tracking'],
     autonomy: 50,
     description: 'Orchestrates group expenses and splits bills fairly.',
-    currentTask: 'Optimizing debt algorithm',
-    status: 'busy',
-    load: 67,
-    tasksCompleted: 328,
-    avgResponseTime: 3.8,
-    lastActive: new Date().toISOString(),
+    currentTask: null,
+    status: 'idle',
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -868,12 +868,12 @@ export const AGENTS = [
     domains: ['Admin UI', 'WebSocket Monitoring', 'User Management', 'Analytics'],
     autonomy: 50,
     description: 'Monitors platform and provides admin tools.',
-    currentTask: 'Processing dashboard metrics',
-    status: 'busy',
-    load: 89,
-    tasksCompleted: 2145,
-    avgResponseTime: 1.5,
-    lastActive: new Date().toISOString(),
+    currentTask: null,
+    status: 'idle',
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -981,12 +981,12 @@ export const AGENTS = [
     domains: ['React Components', 'MUI Theme', 'Navigation', 'Design System'],
     autonomy: 50,
     description: 'Crafts the user interface and ensures design consistency.',
-    currentTask: 'Building Mission Control UI',
-    status: 'busy',
-    load: 78,
-    tasksCompleted: 1567,
-    avgResponseTime: 4.5,
-    lastActive: new Date().toISOString(),
+    currentTask: null,
+    status: 'idle',
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -1104,10 +1104,10 @@ export const AGENTS = [
     description: 'Builds and distributes mobile app.',
     currentTask: null,
     status: 'idle',
-    load: 12,
-    tasksCompleted: 89,
-    avgResponseTime: 8.2,
-    lastActive: new Date(Date.now() - 1800000).toISOString(),
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -1227,10 +1227,10 @@ export const AGENTS = [
     description: 'Maintains infrastructure and manages deployments.',
     currentTask: null,
     status: 'idle',
-    load: 34,
-    tasksCompleted: 756,
-    avgResponseTime: 6.1,
-    lastActive: new Date(Date.now() - 1200000).toISOString(),
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {
@@ -1350,10 +1350,10 @@ export const AGENTS = [
     description: 'Manages internationalization for 6 languages.',
     currentTask: null,
     status: 'idle',
-    load: 5,
-    tasksCompleted: 234,
-    avgResponseTime: 2.7,
-    lastActive: new Date(Date.now() - 2400000).toISOString(),
+    load: 0,
+    tasksCompleted: 0,
+    avgResponseTime: null,
+    lastActive: null,
 
     // ── Personality DNA ──
     personality: {

@@ -391,7 +391,7 @@ const AgentCardWrapper = React.memo(function AgentCardWrapper({
       <AgentCard
         agent={agent}
         onClick={() => onClick(agent)}
-        compact={!isApolloCard}
+        compact={false}
       />
     </Box>
   );

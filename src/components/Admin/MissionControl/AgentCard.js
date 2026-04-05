@@ -104,7 +104,10 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
   const moodEmoji = mood.emoji || MOOD_STATES[moodCurrent]?.emoji || '🤖';
   const moodLabel = MOOD_STATES[moodCurrent]?.label || moodCurrent || agent.status;
   const moodColor = MOOD_STATES[moodCurrent]?.color || '#9E9E9E';
-  const energy = typeof mood.energy === 'number' ? mood.energy : 50;
+
+  // Whether this agent has real operational data from the API (not just defaults)
+  const hasRealData = agent.tasksCompleted > 0 || agent.lastActive != null;
+
   // ── Memoized partner data for collaboration dots ───────────
   const partners = useMemo(
     () => (agent.worksWellWith || []).slice(0, 3).map((id, i) => partnerDisplayFromId(id, i)),
@@ -146,12 +149,6 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
     if (agent.load >= 50) return '#FF9800';
     return '#4CAF50';
   }, [agent.load]);
-
-  const energyColor = useMemo(() => {
-    if (energy >= 70) return '#4CAF50';
-    if (energy >= 40) return '#FF9800';
-    return '#F44336';
-  }, [energy]);
 
   // ── Avatar ring animation based on agent status ────────────
   const ringAnimation = useMemo(() => {
@@ -338,36 +335,37 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
 
 
         {/* ═══════════════════════════════════════════════════════
-            3 · ENERGY BAR — thin colored strip
+            3 · LIVE DATA INDICATOR — shows whether this card has real metrics
             ═══════════════════════════════════════════════════════ */}
-        <Box sx={{ mb: 1.25 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.25}>
-            <Box display="flex" alignItems="center" gap={0.5}>
-              <Typography sx={{ fontSize: '0.6rem', lineHeight: 1 }}>{moodEmoji}</Typography>
-              <Typography variant="caption" sx={{
-                fontSize: '0.6rem', color: 'text.secondary', fontWeight: 600,
-              }}>
-                Energy
-              </Typography>
-            </Box>
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 0.5,
+          mb: 1.25, px: 0.25,
+        }}>
+          <Box sx={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: hasRealData ? '#4CAF50' : '#9E9E9E',
+            boxShadow: hasRealData ? '0 0 6px #4CAF50' : 'none',
+          }} />
+          <Typography variant="caption" sx={{
+            fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.5px',
+            color: hasRealData ? 'text.secondary' : 'text.disabled',
+            textTransform: 'uppercase',
+          }}>
+            {hasRealData ? 'Live data' : 'Awaiting first task'}
+          </Typography>
+          {agent.lastActive && (
             <Typography variant="caption" sx={{
-              fontSize: '0.6rem', fontWeight: 700, color: energyColor,
+              fontSize: '0.55rem', color: 'text.disabled', ml: 'auto',
             }}>
-              {energy}%
+              {(() => {
+                const diff = Date.now() - new Date(agent.lastActive).getTime();
+                if (diff < 60000) return 'just now';
+                if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+                if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+                return `${Math.floor(diff / 86400000)}d ago`;
+              })()}
             </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={energy}
-            sx={{
-              height: 3, borderRadius: 2,
-              backgroundColor: alpha(energyColor, 0.10),
-              '& .MuiLinearProgress-bar': {
-                backgroundColor: energyColor, borderRadius: 2,
-                transition: 'width 1s ease-out',
-              },
-            }}
-          />
+          )}
         </Box>
 
 
@@ -510,7 +508,7 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
 
 
         {/* ═══════════════════════════════════════════════════════
-            7 · STATS FOOTER
+            7 · STATS FOOTER — real metrics from API (dashes when no data)
             ═══════════════════════════════════════════════════════ */}
         {!compact && (
           <Box
@@ -518,29 +516,31 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
             pt={1.25}
             sx={{ borderTop: 1, borderColor: alpha(safeColor, 0.10) }}
           >
-            <Tooltip title="Tasks Completed" arrow>
+            <Tooltip title="Total tasks completed (all time)" arrow>
               <Box display="flex" alignItems="center" gap={0.5}>
                 <Typography sx={{ fontSize: '0.65rem' }}>✅</Typography>
                 <Typography variant="caption" sx={{
-                  fontSize: '0.73rem', fontWeight: 700, color: 'text.primary',
+                  fontSize: '0.73rem', fontWeight: 700,
+                  color: agent.tasksCompleted > 0 ? 'text.primary' : 'text.disabled',
                 }}>
-                  {(agent.tasksCompleted ?? 0).toLocaleString()}
+                  {agent.tasksCompleted > 0 ? agent.tasksCompleted.toLocaleString() : '—'}
                 </Typography>
               </Box>
             </Tooltip>
 
-            <Tooltip title="Avg Response Time" arrow>
+            <Tooltip title="Average response time (seconds)" arrow>
               <Box display="flex" alignItems="center" gap={0.5}>
                 <Typography sx={{ fontSize: '0.65rem' }}>⚡</Typography>
                 <Typography variant="caption" sx={{
-                  fontSize: '0.73rem', fontWeight: 600, color: 'text.secondary',
+                  fontSize: '0.73rem', fontWeight: 600,
+                  color: agent.avgResponseTime != null ? 'text.secondary' : 'text.disabled',
                 }}>
-                  {agent.avgResponseTime ?? '—'}s
+                  {agent.avgResponseTime != null ? `${agent.avgResponseTime}s` : '—'}
                 </Typography>
               </Box>
             </Tooltip>
 
-            <Tooltip title={`Last active: ${agent.lastActive || 'unknown'}`} arrow>
+            <Tooltip title={agent.lastActive ? `Last active: ${new Date(agent.lastActive).toLocaleString()}` : 'No activity recorded'} arrow>
               <Box display="flex" alignItems="center" gap={0.5}>
                 <Typography sx={{ fontSize: '0.65rem' }}>🕐</Typography>
                 <Typography variant="caption" sx={{
