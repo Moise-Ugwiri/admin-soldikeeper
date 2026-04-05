@@ -140,6 +140,9 @@ const AgentControlPanel = () => {
   const mergedAgents = (fleetData?.agents || []).map(liveAgent => {
     const regAgent = STATIC_AGENTS.find(a => a.id === liveAgent.id);
     return {
+      // Pull all display fields from registry first so color/emoji/etc are always defined
+      ...(regAgent || {}),
+      // Then overlay live data (status, load, currentTask, etc.)
       ...liveAgent,
       _registry: regAgent
     };
@@ -150,9 +153,8 @@ const AgentControlPanel = () => {
   const missingAgents = STATIC_AGENTS
     .filter(a => !liveIds.has(a.id))
     .map(a => ({
-      id: a.id,
-      name: a.name,
-      role: a.role,
+      // Spread the full registry agent so color, emoji, personality, mood, etc. are all present
+      ...a,
       status: a.status || 'idle',
       currentTask: a.currentTask || null,
       autonomyLevel: a.autonomy || 50,

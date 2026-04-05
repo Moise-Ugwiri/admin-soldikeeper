@@ -86,6 +86,9 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
   const theme = useTheme();
   const isApollo = agent.id === '00-apollo';
 
+  // Defensive fallback — color is required by alpha(); guard against undefined API data
+  const safeColor = agent.color || '#9E9E9E';
+
   // ── Hover state — expands personality on hover ──────────────
   const [isHovered, setIsHovered] = useState(false);
 
@@ -177,10 +180,10 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
         position: 'relative',
         overflow: 'visible',
         borderRadius: 3,
-        border: `1px solid ${alpha(agent.color, isApollo ? 0.45 : 0.15)}`,
-        borderLeft: `4px solid ${agent.color}`,
+        border: `1px solid ${alpha(safeColor, isApollo ? 0.45 : 0.15)}`,
+        borderLeft: `4px solid ${safeColor}`,
         background: isApollo
-          ? `linear-gradient(145deg, ${alpha(agent.color, 0.07)} 0%, ${alpha(agent.color, 0.02)} 100%)`
+          ? `linear-gradient(145deg, ${alpha(safeColor, 0.07)} 0%, ${alpha(safeColor, 0.02)} 100%)`
           : theme.palette.background.paper,
         transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
 
@@ -192,10 +195,10 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
         // Hover lift + colored shadow
         '&:hover': onClick ? {
           transform: 'translateY(-6px)',
-          boxShadow: `0 18px 36px ${alpha(agent.color, 0.30)},
-                      0 0 0 1px ${alpha(agent.color, 0.25)}`,
-          borderColor: alpha(agent.color, 0.5),
-          borderLeftColor: agent.color,
+          boxShadow: `0 18px 36px ${alpha(safeColor, 0.30)},
+                      0 0 0 1px ${alpha(safeColor, 0.25)}`,
+          borderColor: alpha(safeColor, 0.5),
+          borderLeftColor: safeColor,
         } : {},
       }}
     >
@@ -205,9 +208,9 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
         <Box sx={{
           position: 'absolute', top: -10, right: -10, zIndex: 2,
           width: 28, height: 28, borderRadius: '50%',
-          background: `linear-gradient(135deg, ${agent.color}, #FFA000)`,
+          background: `linear-gradient(135deg, ${safeColor}, #FFA000)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 2px 8px ${alpha(agent.color, 0.5)}`,
+          boxShadow: `0 2px 8px ${alpha(safeColor, 0.5)}`,
         }}>
           <Typography sx={{ fontSize: '0.75rem', lineHeight: 1 }}>⭐</Typography>
         </Box>
@@ -228,14 +231,14 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
               width: compact ? 48 : 56,
               height: compact ? 48 : 56,
               borderRadius: '50%',
-              background: `conic-gradient(from 0deg, ${agent.color}, ${alpha(agent.color, 0.3)}, ${agent.color})`,
+              background: `conic-gradient(from 0deg, ${safeColor}, ${alpha(safeColor, 0.3)}, ${safeColor})`,
               p: '3px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               animation: ringAnimation,
             }}>
               <Box sx={{
                 width: '100%', height: '100%', borderRadius: '50%',
-                backgroundColor: agent.bgColor || alpha(agent.color, 0.1),
+                backgroundColor: agent.bgColor || alpha(safeColor, 0.1),
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <Typography sx={{ fontSize: compact ? '1.4rem' : '1.7rem', lineHeight: 1, userSelect: 'none' }}>
@@ -248,7 +251,7 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
             {agent.status === 'idle' && (
               <Box sx={{
                 position: 'absolute', inset: -2, borderRadius: '50%',
-                boxShadow: `0 0 14px 4px ${alpha(agent.color, 0.45)}`,
+                boxShadow: `0 0 14px 4px ${alpha(safeColor, 0.45)}`,
                 animation: `${glowPulse} 2s ease-in-out infinite`,
                 pointerEvents: 'none',
               }} />
@@ -272,7 +275,7 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
           {/* ── Agent identity block ── */}
           <Box flex={1} minWidth={0}>
             <Typography variant="caption" sx={{
-              fontSize: '0.65rem', fontWeight: 700, color: agent.color,
+              fontSize: '0.65rem', fontWeight: 700, color: safeColor,
               letterSpacing: '0.8px', textTransform: 'uppercase',
             }}>
               {agent.number}
@@ -281,7 +284,7 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
             <Typography variant="h6" noWrap sx={{
               fontSize: compact ? '0.95rem' : '1.05rem',
               fontWeight: 800, lineHeight: 1.2,
-              color: isApollo ? agent.color : 'text.primary',
+              color: isApollo ? safeColor : 'text.primary',
               letterSpacing: '0.3px',
             }}>
               {agent.name.toUpperCase()}
@@ -313,9 +316,9 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
                 size="small"
                 sx={{
                   height: 20, fontSize: '0.6rem', fontWeight: 600,
-                  backgroundColor: alpha(agent.color, 0.10),
-                  color: agent.color,
-                  border: `1px solid ${alpha(agent.color, 0.20)}`,
+                  backgroundColor: alpha(safeColor, 0.10),
+                  color: safeColor,
+                  border: `1px solid ${alpha(safeColor, 0.20)}`,
                   borderRadius: '10px',
                   '& .MuiChip-label': { px: 0.75 },
                 }}
@@ -324,7 +327,7 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
             {!isHovered && hiddenCount > 0 && (
               <Typography variant="caption" sx={{
                 fontSize: '0.6rem', fontWeight: 600,
-                color: alpha(agent.color, 0.55),
+                color: alpha(safeColor, 0.55),
                 alignSelf: 'center', ml: 0.25,
               }}>
                 +{hiddenCount}
@@ -373,8 +376,8 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
             ═══════════════════════════════════════════════════════ */}
         <Box sx={{
           position: 'relative', overflow: 'hidden',
-          backgroundColor: alpha(agent.color, 0.05),
-          border: `1px solid ${alpha(agent.color, 0.08)}`,
+          backgroundColor: alpha(safeColor, 0.05),
+          border: `1px solid ${alpha(safeColor, 0.08)}`,
           borderRadius: 2, p: 1.25, mb: 1.25,
           minHeight: compact ? 'auto' : '3em',
           display: 'flex', alignItems: 'center',
@@ -383,7 +386,7 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
           {agent.status === 'busy' && (
             <Box sx={{
               position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
-              backgroundColor: agent.color, borderRadius: '2px 0 0 2px',
+              backgroundColor: safeColor, borderRadius: '2px 0 0 2px',
               animation: `${accentPulse} 2s ease-in-out infinite`,
             }} />
           )}
@@ -441,9 +444,9 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
                 size="small"
                 sx={{
                   height: 18, fontSize: '0.65rem', fontWeight: 700,
-                  backgroundColor: alpha(agent.color, 0.12),
-                  color: agent.color,
-                  border: `1px solid ${alpha(agent.color, 0.25)}`,
+                  backgroundColor: alpha(safeColor, 0.12),
+                  color: safeColor,
+                  border: `1px solid ${alpha(safeColor, 0.25)}`,
                   '& .MuiChip-label': { px: 0.75 },
                 }}
               />
@@ -455,9 +458,9 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
             value={agent.load}
             sx={{
               height: 5, borderRadius: 3,
-              backgroundColor: alpha(agent.color, 0.08),
+              backgroundColor: alpha(safeColor, 0.08),
               '& .MuiLinearProgress-bar': {
-                backgroundColor: agent.color, borderRadius: 3,
+                backgroundColor: safeColor, borderRadius: 3,
                 transition: 'width 0.8s ease-out',
               },
             }}
@@ -513,7 +516,7 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
           <Box
             display="flex" justifyContent="space-between" alignItems="center"
             pt={1.25}
-            sx={{ borderTop: 1, borderColor: alpha(agent.color, 0.10) }}
+            sx={{ borderTop: 1, borderColor: alpha(safeColor, 0.10) }}
           >
             <Tooltip title="Tasks Completed" arrow>
               <Box display="flex" alignItems="center" gap={0.5}>
