@@ -14,7 +14,7 @@ import {
   Tooltip,
   Skeleton,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
+// alpha removed — not used in simplified header
 import {
   Speed as SpeedIcon,
   Warning as WarningIcon,
