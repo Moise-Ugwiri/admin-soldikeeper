@@ -6,7 +6,7 @@ import {
   FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip,
   Alert, Divider, Tabs, Tab, LinearProgress,
   CircularProgress, Stack, alpha, useTheme,
-  TextField, InputAdornment,
+  TextField, InputAdornment, Switch, FormControlLabel,
 } from '@mui/material';
 import {
   SmartToy, Speed, Warning, CheckCircle, Error,
@@ -15,6 +15,8 @@ import {
   ArrowUpward, ArrowDownward, Hub, Schedule,
   Person, AdminPanelSettings, Telegram, Build,
   Search, AttachMoney, TrendingUp, AccessTime, Wifi, WifiOff,
+  PauseCircle, PlayCircle, Block, PowerSettingsNew,
+  Download, Tune, DeleteOutline, InfoOutlined,
 } from '@mui/icons-material';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -45,7 +47,7 @@ const MODEL_INFO = {
   'gpt-5':         { tier: '🟡 Free (Limited)', note: '⚠️ 1 req/min, 8/day' },
   'gpt-5-mini':    { tier: '🟡 Free (Limited)', note: '⚠️ Heavily rate-limited' },
   'o4-mini':       { tier: '🟢 Free', note: 'Reasoning model, uses max_completion_tokens' },
-  'o3-mini':       { tier: '�� Free', note: 'Reasoning model, previous gen' },
+  'o3-mini':       { tier: '🟢 Free', note: 'Reasoning model, previous gen' },
   'Phi-4':         { tier: '🟢 Free', note: 'Microsoft open-source 14B' },
   'Phi-4-mini':    { tier: '🟢 Free', note: 'Lightweight open-source' },
   'Meta-Llama-3.1-405B-Instruct': { tier: '🟢 Free', note: 'Meta flagship 405B' },
@@ -94,6 +96,12 @@ const CATEGORY_COLORS = {
   'Admin':       'warning',
   'Scheduled':   'info',
   'Pipeline':    'secondary',
+};
+
+const PROVIDER_MODELS = {
+  'github-models': ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini', 'o4-mini', 'o3-mini', 'Phi-4', 'Phi-4-mini', 'Meta-Llama-3.1-405B-Instruct', 'Meta-Llama-3.1-70B-Instruct', 'Mistral-Large-2', 'DeepSeek-R1'],
+  'claude':  ['claude-sonnet-4-6', 'claude-sonnet-4-5-20241022', 'claude-haiku-4-5', 'claude-opus-4', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'],
+  'grok':    ['grok-3', 'grok-3-mini', 'grok-2'],
 };
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -240,14 +248,14 @@ function AnalyticsTab({ history, theme }) {
 
 // ── Service Map Tab ────────────────────────────────────────────
 
-function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange, onCategoryChange }) {
+function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange, onCategoryChange, stoppedServices, onStopService, onStartService, serviceOverrides, onOpenOverride }) {
   const services      = metrics?.services      || {};
   const serviceRoutes = metrics?.serviceRoutes || {};
   const ghQuota       = metrics?.githubModelsQuota || { used: 0, limit: 50, softLimit: 40 };
 
   const allServiceList = Object.keys({ ...SERVICE_META, ...services }).map(key => {
     const meta  = SERVICE_META[key] || { label: key, category: 'Unknown', icon: <Circle />, trigger: '—', frequency: '—', maxCalls: '?', maxTokens: '?' };
-    const stats = services[key]     || { requests: 0, tokens_in: 0, tokens_out: 0, total_tokens: 0, errors: 0, last_used: null, last_provider: null, avg_tokens_per_req: 0 };
+    const stats = services[key]     || { requests: 0, tokens_in: 0, tokens_out: 0, total_tokens: 0, errors: 0, cost_usd: 0, last_used: null, last_provider: null, avg_tokens_per_req: 0 };
     const route = serviceRoutes[key] || stats.route || ['github-models', 'claude', 'grok'];
     return { key, ...meta, ...stats, route };
   });
@@ -268,10 +276,11 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
 
   const categoryStats = {};
   allServiceList.forEach(s => {
-    if (!categoryStats[s.category]) categoryStats[s.category] = { requests: 0, tokens: 0, errors: 0 };
+    if (!categoryStats[s.category]) categoryStats[s.category] = { requests: 0, tokens: 0, errors: 0, cost: 0 };
     categoryStats[s.category].requests += s.requests;
     categoryStats[s.category].tokens   += s.total_tokens;
     categoryStats[s.category].errors   += s.errors;
+    categoryStats[s.category].cost     += s.cost_usd || 0;
   });
 
   const totalServiceRequests = allServiceList.reduce((sum, s) => sum + s.requests, 0);
@@ -338,8 +347,7 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
             variant="determinate"
             value={Math.min((ghQuota.used / ghQuota.limit) * 100, 100)}
             sx={{
-              height: 14,
-              borderRadius: 1,
+              height: 14, borderRadius: 1,
               bgcolor: alpha(theme.palette.grey[300], 0.3),
               '& .MuiLinearProgress-bar': {
                 bgcolor: ghQuota.used >= ghQuota.limit
@@ -351,19 +359,11 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
               },
             }}
           />
-          <Box sx={{
-            position: 'absolute',
-            left: `${(ghQuota.softLimit / ghQuota.limit) * 100}%`,
-            top: -2, bottom: -2, width: 2,
-            bgcolor: theme.palette.warning.main,
-            zIndex: 1,
-          }} />
+          <Box sx={{ position: 'absolute', left: `${(ghQuota.softLimit / ghQuota.limit) * 100}%`, top: -2, bottom: -2, width: 2, bgcolor: theme.palette.warning.main, zIndex: 1 }} />
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5, alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="caption" color="text.secondary">0</Typography>
-          <Typography variant="caption" color="warning.main">
-            ← Soft limit ({ghQuota.softLimit}): user-chat only beyond this
-          </Typography>
+          <Typography variant="caption" color="warning.main">← Soft limit ({ghQuota.softLimit}): user-chat only beyond this</Typography>
           <Typography variant="caption" color="text.secondary">{ghQuota.limit}</Typography>
         </Box>
       </Paper>
@@ -371,7 +371,7 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
       {/* Category Summary Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {categoryOrder.filter(c => categoryStats[c]).map(cat => {
-          const cs       = categoryStats[cat];
+          const cs = categoryStats[cat];
           const catColor = CATEGORY_COLORS[cat] || 'default';
           return (
             <Grid size={{ xs: 6, sm: 3 }} key={cat}>
@@ -383,7 +383,7 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
                     <Typography component="span" variant="caption">calls</Typography>
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {formatNumber(cs.tokens)} tokens • {cs.errors} errors
+                    {formatNumber(cs.tokens)} tok • {cs.errors} err • ${(cs.cost || 0).toFixed(4)}
                   </Typography>
                 </CardContent>
               </Card>
@@ -400,7 +400,7 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
             Service Map ({serviceList.length} / {allServiceList.length} services)
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Real-time LLM usage per service — sorted by category then volume
+            Real-time LLM usage per service — use ⏸ to pause a service, ⚙ to pin a model
           </Typography>
         </Box>
         <TableContainer>
@@ -413,34 +413,43 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
                 <TableCell align="right"><strong>Calls</strong></TableCell>
                 <TableCell align="right"><strong>Tokens</strong></TableCell>
                 <TableCell align="right"><strong>Avg Tok/Req</strong></TableCell>
+                <TableCell align="right"><strong>Est. Cost</strong></TableCell>
                 <TableCell align="right"><strong>Errors</strong></TableCell>
                 <TableCell><strong>Last Provider</strong></TableCell>
                 <TableCell><strong>Last Used</strong></TableCell>
-                <TableCell align="center"><strong>Trigger</strong></TableCell>
-                <TableCell align="center"><strong>Max/Trigger</strong></TableCell>
+                <TableCell align="center"><strong>Override</strong></TableCell>
+                <TableCell align="center"><strong>Control</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {serviceList.map((svc) => {
-                const catColor = CATEGORY_COLORS[svc.category] || 'default';
-                const pct      = totalServiceRequests > 0 ? Math.round((svc.requests / totalServiceRequests) * 100) : 0;
+                const isStopped  = stoppedServices.includes(svc.key);
+                const override   = serviceOverrides[svc.key];
+                const catColor   = CATEGORY_COLORS[svc.category] || 'default';
+                const pct        = totalServiceRequests > 0 ? Math.round((svc.requests / totalServiceRequests) * 100) : 0;
                 return (
                   <TableRow
                     key={svc.key}
                     sx={{
-                      bgcolor: svc.requests > 0 ? alpha(theme.palette.primary.main, 0.02) : 'inherit',
+                      opacity:   isStopped ? 0.55 : 1,
+                      bgcolor:   isStopped
+                        ? alpha(theme.palette.error.main, 0.04)
+                        : svc.requests > 0
+                          ? alpha(theme.palette.primary.main, 0.02)
+                          : 'inherit',
                       '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.06) },
                     }}
                   >
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {React.cloneElement(svc.icon, { sx: { fontSize: 18, color: 'text.secondary' } })}
+                        {React.cloneElement(svc.icon, { sx: { fontSize: 18, color: isStopped ? 'error.main' : 'text.secondary' } })}
                         <Box>
                           <Typography variant="body2" fontWeight={600}>{svc.label}</Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: 10 }}>
                             {svc.key}
                           </Typography>
                         </Box>
+                        {isStopped && <Chip label="PAUSED" size="small" color="error" sx={{ ml: 0.5, height: 18, fontSize: 10 }} />}
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -472,6 +481,12 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
                     <TableCell align="right">
                       {svc.avg_tokens_per_req > 0 ? formatNumber(svc.avg_tokens_per_req) : '—'}
                     </TableCell>
+                    <TableCell align="right">
+                      {svc.cost_usd > 0
+                        ? <Typography variant="body2" color="warning.main">${(svc.cost_usd || 0).toFixed(4)}</Typography>
+                        : <Typography variant="body2" color="success.main">$0.00</Typography>
+                      }
+                    </TableCell>
                     <TableCell align="right" sx={{ color: svc.errors > 0 ? 'error.main' : 'inherit' }}>
                       {svc.errors || '—'}
                     </TableCell>
@@ -492,26 +507,275 @@ function ServiceMapTab({ metrics, theme, search, categoryFilter, onSearchChange,
                       }
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="caption">{svc.trigger}</Typography>
+                      <Tooltip title={override ? `Pinned: ${override.provider}/${override.model}` : 'Set model override'}>
+                        <IconButton size="small" onClick={() => onOpenOverride(svc.key, override)}>
+                          <Tune fontSize="small" sx={{ color: override ? 'primary.main' : 'text.disabled' }} />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                     <TableCell align="center">
-                      <Chip
-                        label={`${svc.maxCalls}x${typeof svc.maxTokens === 'number' ? formatNumber(svc.maxTokens) : svc.maxTokens}t`}
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontSize: 10, height: 20, fontFamily: 'monospace' }}
-                      />
+                      <Tooltip title={isStopped ? 'Resume service' : 'Pause service'}>
+                        <IconButton
+                          size="small"
+                          onClick={() => isStopped ? onStartService(svc.key) : onStopService(svc.key)}
+                          sx={{ color: isStopped ? 'success.main' : 'error.main' }}
+                        >
+                          {isStopped ? <PlayCircle fontSize="small" /> : <PauseCircle fontSize="small" />}
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 );
               })}
               {serviceList.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">No services match the current filter.</Typography>
                   </TableCell>
                 </TableRow>
               )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    </Box>
+  );
+}
+
+// ── Top Users Tab ──────────────────────────────────────────────
+
+function TopUsersTab({ topUsers, theme }) {
+  if (!topUsers.length) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Person sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+        <Typography color="text.secondary">No per-user data yet — data accumulates as users interact with the AI.</Typography>
+      </Box>
+    );
+  }
+
+  const maxTokens = topUsers[0]?.total_tokens || 1;
+
+  return (
+    <Paper sx={{ overflow: 'hidden' }}>
+      <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
+        <Typography variant="h6" fontWeight={600}>👤 Top Token Consumers</Typography>
+        <Typography variant="caption" color="text.secondary">Ranked by total tokens used · resets on server restart</Typography>
+      </Box>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: alpha(theme.palette.grey[500], 0.06) }}>
+              <TableCell><strong>#</strong></TableCell>
+              <TableCell><strong>User ID</strong></TableCell>
+              <TableCell align="right"><strong>Requests</strong></TableCell>
+              <TableCell align="right"><strong>Total Tokens</strong></TableCell>
+              <TableCell align="right"><strong>Tokens In</strong></TableCell>
+              <TableCell align="right"><strong>Tokens Out</strong></TableCell>
+              <TableCell align="right"><strong>Est. Cost</strong></TableCell>
+              <TableCell><strong>Usage</strong></TableCell>
+              <TableCell><strong>Last Seen</strong></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {topUsers.map((u, i) => {
+              const estimatedCost = ((u.tokens_in || 0) * 0 + (u.tokens_out || 0) * 0); // GH = free
+              const pct = Math.round(((u.total_tokens || 0) / maxTokens) * 100);
+              return (
+                <TableRow key={u.userId} sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) } }}>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary" fontWeight={i < 3 ? 700 : 400}>
+                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title={u.userId}>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
+                        …{u.userId?.slice(-10)}
+                      </Typography>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell align="right">{formatNumber(u.requests)}</TableCell>
+                  <TableCell align="right"><strong>{formatNumber(u.total_tokens)}</strong></TableCell>
+                  <TableCell align="right">{formatNumber(u.tokens_in || 0)}</TableCell>
+                  <TableCell align="right">{formatNumber(u.tokens_out || 0)}</TableCell>
+                  <TableCell align="right">
+                    <Typography variant="body2" color={estimatedCost > 0 ? 'warning.main' : 'success.main'}>
+                      {estimatedCost > 0 ? `$${estimatedCost.toFixed(4)}` : '🟢 Free'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={pct}
+                        sx={{ flex: 1, height: 6, borderRadius: 1, bgcolor: alpha(theme.palette.primary.main, 0.15) }}
+                      />
+                      <Typography variant="caption" color="text.secondary">{pct}%</Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    {u.lastSeen
+                      ? <Tooltip title={new Date(u.lastSeen).toLocaleString()}><Typography variant="caption">{_timeAgo(u.lastSeen)}</Typography></Tooltip>
+                      : <Typography variant="caption" color="text.disabled">—</Typography>
+                    }
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  );
+}
+
+// ── Request Log Tab ────────────────────────────────────────────
+
+function RequestLogTab({ theme }) {
+  const [log,           setLog]           = useState([]);
+  const [loading,       setLoading]       = useState(false);
+  const [filterService, setFilterService] = useState('');
+  const [errorsOnly,    setErrorsOnly]    = useState(false);
+
+  const fetchLog = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/admin/llm/request-log', {
+        params: { limit: 200, service: filterService || undefined, errorsOnly: errorsOnly || undefined }
+      });
+      if (res.data.success) setLog(res.data.log);
+    } catch (_) {}
+    finally { setLoading(false); }
+  }, [filterService, errorsOnly]);
+
+  useEffect(() => { fetchLog(); }, [fetchLog]);
+
+  const serviceKeys = [...new Set([...Object.keys(SERVICE_META)])];
+
+  return (
+    <Box>
+      {/* Filter bar */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel>Filter by service</InputLabel>
+          <Select value={filterService} label="Filter by service" onChange={e => setFilterService(e.target.value)}>
+            <MenuItem value="">All Services</MenuItem>
+            {serviceKeys.map(k => (
+              <MenuItem key={k} value={k}>{SERVICE_META[k]?.label || k}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControlLabel
+          control={<Switch size="small" checked={errorsOnly} onChange={e => setErrorsOnly(e.target.checked)} />}
+          label={<Typography variant="body2">Errors only</Typography>}
+        />
+        <Button size="small" startIcon={<Refresh />} onClick={fetchLog} disabled={loading}>Refresh</Button>
+        <Typography variant="caption" color="text.secondary">
+          Last {log.length} calls (newest first) · resets on server restart
+        </Typography>
+      </Box>
+
+      <Paper sx={{ overflow: 'hidden' }}>
+        <TableContainer sx={{ maxHeight: 600 }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell><strong>Time</strong></TableCell>
+                <TableCell><strong>Service</strong></TableCell>
+                <TableCell><strong>Provider / Model</strong></TableCell>
+                <TableCell align="right"><strong>Tok In</strong></TableCell>
+                <TableCell align="right"><strong>Tok Out</strong></TableCell>
+                <TableCell align="right"><strong>Latency</strong></TableCell>
+                <TableCell><strong>Error</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                    <CircularProgress size={24} />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && log.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <Typography color="text.secondary">No log entries yet.</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && log.map((entry, i) => (
+                <TableRow
+                  key={i}
+                  sx={{
+                    bgcolor: entry.error
+                      ? alpha(theme.palette.error.main, 0.04)
+                      : 'inherit',
+                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) },
+                  }}
+                >
+                  <TableCell>
+                    <Tooltip title={entry.ts ? new Date(entry.ts).toLocaleString() : ''}>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
+                        {entry.ts ? _timeAgo(entry.ts) : '—'}
+                      </Typography>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
+                      {SERVICE_META[entry.service]?.label || entry.service || '—'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {entry.provider
+                      ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <Typography variant="caption" fontWeight={600}>{entry.provider}</Typography>
+                          {entry.model && entry.model !== entry.provider && (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>{entry.model}</Typography>
+                          )}
+                        </Box>
+                      )
+                      : <Typography variant="caption" color="text.disabled">—</Typography>
+                    }
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="caption">{entry.tokensIn > 0 ? formatNumber(entry.tokensIn) : '—'}</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="caption">{entry.tokensOut > 0 ? formatNumber(entry.tokensOut) : '—'}</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: entry.latencyMs > 3000 ? 'error.main'
+                             : entry.latencyMs > 1500 ? 'warning.main'
+                             : 'inherit',
+                      }}
+                    >
+                      {entry.latencyMs > 0 ? `${entry.latencyMs}ms` : '—'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 260 }}>
+                    {entry.error
+                      ? (
+                        <Tooltip title={entry.error}>
+                          <Chip
+                            label={entry.error.length > 40 ? entry.error.slice(0, 40) + '…' : entry.error}
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            sx={{ fontSize: 10, maxWidth: 240 }}
+                          />
+                        </Tooltip>
+                      )
+                      : <Typography variant="caption" color="success.main">OK</Typography>
+                    }
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </TableContainer>
@@ -526,33 +790,50 @@ export default function LLMManagement() {
   const theme = useTheme();
 
   // Core state
-  const [metrics,         setMetrics]         = useState(null);
-  const [config,          setConfig]          = useState(null);
-  const [availableModels, setAvailableModels] = useState(null);
-  const [loading,         setLoading]         = useState(true);
-  const [configOpen,      setConfigOpen]      = useState(false);
-  const [testResult,      setTestResult]      = useState(null);
-  const [testing,         setTesting]         = useState(null);
-  const [editConfig,      setEditConfig]      = useState({});
-  const [activeTab,       setActiveTab]       = useState(0);
+  const [metrics,          setMetrics]          = useState(null);
+  const [config,           setConfig]           = useState(null);
+  const [availableModels,  setAvailableModels]  = useState(null);
+  const [loading,          setLoading]          = useState(true);
+  const [configOpen,       setConfigOpen]       = useState(false);
+  const [testResult,       setTestResult]       = useState(null);
+  const [testing,          setTesting]          = useState(null);
+  const [editConfig,       setEditConfig]       = useState({});
+  const [activeTab,        setActiveTab]        = useState(0);
 
-  // New state
-  const [history,        setHistory]        = useState([]);
-  const [topUsers,       setTopUsers]       = useState([]);  // eslint-disable-line no-unused-vars
-  const [wsConnected,    setWsConnected]    = useState(false);
-  const [search,         setSearch]         = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [quotaCountdown, setQuotaCountdown] = useState('');
+  // Extended state
+  const [history,          setHistory]          = useState([]);
+  const [topUsers,         setTopUsers]         = useState([]);
+  const [wsConnected,      setWsConnected]      = useState(false);
+  const [search,           setSearch]           = useState('');
+  const [categoryFilter,   setCategoryFilter]   = useState('All');
+  const [quotaCountdown,   setQuotaCountdown]   = useState('');
+
+  // Admin controls state
+  const [stoppedServices,  setStoppedServices]  = useState([]);
+  const [disabledProviders,setDisabledProviders]= useState([]);
+  const [serviceOverrides, setServiceOverrides] = useState({});
+  const [budget,           setBudget]           = useState({ dailyLimitUsd: 0, monthlyLimitUsd: 0, alertThresholdPct: 80, quotaAlertPct: 80 });
+  const [editBudget,       setEditBudget]       = useState({});
+
+  // Override dialog
+  const [overrideOpen,     setOverrideOpen]     = useState(false);
+  const [overrideService,  setOverrideService]  = useState('');
+  const [overrideProvider, setOverrideProvider] = useState('');
+  const [overrideModel,    setOverrideModel]    = useState('');
 
   // ── Data fetching ────────────────────────────────────────────
 
   const fetchMetrics = useCallback(async () => {
     try {
-      const [metricsRes, configRes, historyRes, topUsersRes] = await Promise.all([
+      const [metricsRes, configRes, historyRes, topUsersRes, stoppedRes, disabledRes, overridesRes, budgetRes] = await Promise.all([
         api.get('/admin/llm/metrics'),
         api.get('/admin/llm/config'),
         api.get('/admin/llm/history').catch(() => ({ data: { success: false } })),
         api.get('/admin/llm/top-users').catch(() => ({ data: { success: false } })),
+        api.get('/admin/llm/stopped-services').catch(() => ({ data: { success: false } })),
+        api.get('/admin/llm/disabled-providers').catch(() => ({ data: { success: false } })),
+        api.get('/admin/llm/service-overrides').catch(() => ({ data: { success: false } })),
+        api.get('/admin/llm/budget').catch(() => ({ data: { success: false } })),
       ]);
 
       if (metricsRes.data.success) {
@@ -564,11 +845,14 @@ export default function LLMManagement() {
         setAvailableModels(configRes.data.availableModels);
         setEditConfig(configRes.data.config);
       }
-      if (historyRes.data.success && historyRes.data.history) {
-        setHistory(historyRes.data.history);
-      }
-      if (topUsersRes.data.success && topUsersRes.data.users) {
-        setTopUsers(topUsersRes.data.users);
+      if (historyRes.data.success && historyRes.data.history)       setHistory(historyRes.data.history);
+      if (topUsersRes.data.success && topUsersRes.data.users)       setTopUsers(topUsersRes.data.users);
+      if (stoppedRes.data.success)   setStoppedServices(stoppedRes.data.stoppedServices || []);
+      if (disabledRes.data.success)  setDisabledProviders(disabledRes.data.disabledProviders || []);
+      if (overridesRes.data.success) setServiceOverrides(overridesRes.data.overrides || {});
+      if (budgetRes.data.success) {
+        setBudget(budgetRes.data.budget);
+        setEditBudget(budgetRes.data.budget);
       }
     } catch (err) {
       console.error('Failed to fetch LLM metrics:', err);
@@ -640,6 +924,84 @@ export default function LLMManagement() {
     }
   };
 
+  const handleProviderToggle = async (providerKey) => {
+    try {
+      const res = await api.post(`/admin/llm/provider/${providerKey}/toggle`);
+      if (res.data.success) setDisabledProviders(res.data.disabledProviders || []);
+    } catch (err) {
+      console.error('Provider toggle failed:', err);
+    }
+  };
+
+  const handleStopService = async (service) => {
+    try {
+      await api.post(`/admin/llm/service/${service}/stop`);
+      setStoppedServices(prev => [...prev, service]);
+    } catch (err) {
+      console.error('Stop service failed:', err);
+    }
+  };
+
+  const handleStartService = async (service) => {
+    try {
+      await api.post(`/admin/llm/service/${service}/start`);
+      setStoppedServices(prev => prev.filter(s => s !== service));
+    } catch (err) {
+      console.error('Start service failed:', err);
+    }
+  };
+
+  const handleOpenOverride = (service, existing) => {
+    setOverrideService(service);
+    setOverrideProvider(existing?.provider || '');
+    setOverrideModel(existing?.model || '');
+    setOverrideOpen(true);
+  };
+
+  const handleSaveOverride = async () => {
+    try {
+      if (!overrideProvider) {
+        await api.delete(`/admin/llm/service/${overrideService}/override`);
+        setServiceOverrides(prev => { const n = { ...prev }; delete n[overrideService]; return n; });
+      } else {
+        const res = await api.put(`/admin/llm/service/${overrideService}/override`, { provider: overrideProvider, model: overrideModel });
+        if (res.data.success) {
+          setServiceOverrides(prev => ({ ...prev, [overrideService]: res.data.override }));
+        }
+      }
+      setOverrideOpen(false);
+    } catch (err) {
+      console.error('Override save failed:', err);
+    }
+  };
+
+  const handleSaveBudget = async () => {
+    try {
+      const res = await api.put('/admin/llm/budget', editBudget);
+      if (res.data.success) {
+        setBudget(res.data.budget);
+        setConfigOpen(false);
+      }
+    } catch (err) {
+      console.error('Budget save failed:', err);
+    }
+  };
+
+  const handleExport = (format) => {
+    const url = `/api/admin/llm/export?format=${format}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `llm-export.${format}`;
+    // Pass auth via fetch then trigger download
+    api.get(`/admin/llm/export?format=${format}`, { responseType: 'blob' })
+      .then(res => {
+        const blob = new Blob([res.data], { type: format === 'csv' ? 'text/csv' : 'application/json' });
+        a.href = URL.createObjectURL(blob);
+        a.click();
+      })
+      .catch(() => console.error('Export failed'));
+  };
+
   // ── Derived metrics ──────────────────────────────────────────
 
   if (loading) {
@@ -667,10 +1029,49 @@ export default function LLMManagement() {
 
   const totalCost = metrics?.totalCost_usd ?? 0;
 
+  // Budget alert thresholds
+  const dailyBudgetPct   = budget.dailyLimitUsd   > 0 ? (totalCost / budget.dailyLimitUsd) * 100   : 0;
+  const ghQuotaPct       = metrics?.githubModelsQuota ? (metrics.githubModelsQuota.used / metrics.githubModelsQuota.limit) * 100 : 0;
+  const showCostAlert    = budget.dailyLimitUsd > 0 && dailyBudgetPct >= budget.alertThresholdPct;
+  const showQuotaAlert   = ghQuotaPct >= (budget.quotaAlertPct || 80);
+
   // ── Render ───────────────────────────────────────────────────
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+
+      {/* ⚠️ In-memory Warning Banner */}
+      <Alert severity="info" icon={<InfoOutlined />} sx={{ mb: 2 }} onClose={() => {}}>
+        <strong>In-memory data:</strong> All metrics, logs, and service controls reset on server restart or deploy. They are not persisted to the database.
+      </Alert>
+
+      {/* Budget / Quota Alerts */}
+      {showCostAlert && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          💸 Daily cost <strong>${totalCost.toFixed(4)}</strong> has reached {Math.round(dailyBudgetPct)}% of your ${budget.dailyLimitUsd} limit.
+        </Alert>
+      )}
+      {showQuotaAlert && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          ⚠️ GitHub Models quota at {Math.round(ghQuotaPct)}% ({metrics?.githubModelsQuota?.used}/{metrics?.githubModelsQuota?.limit}) — paid fallback will activate soon.
+        </Alert>
+      )}
+
+      {/* Stopped services banner */}
+      {stoppedServices.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <strong>⏸ {stoppedServices.length} service{stoppedServices.length > 1 ? 's' : ''} paused:</strong>{' '}
+          {stoppedServices.join(', ')} — requests are blocked until resumed.
+        </Alert>
+      )}
+
+      {/* Disabled providers banner */}
+      {disabledProviders.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <strong>🚫 {disabledProviders.length} provider{disabledProviders.length > 1 ? 's' : ''} disabled:</strong>{' '}
+          {disabledProviders.join(', ')} — skipped in all failover chains.
+        </Alert>
+      )}
 
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1 }}>
@@ -686,9 +1087,11 @@ export default function LLMManagement() {
             }
           </Box>
         </Box>
-        <Stack direction="row" spacing={1}>
-          <Button startIcon={<Refresh />}  onClick={fetchMetrics}            variant="outlined"  size="small">Refresh</Button>
-          <Button startIcon={<Settings />} onClick={() => setConfigOpen(true)} variant="contained" size="small">Configure</Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button startIcon={<Download />}  onClick={() => handleExport('json')} variant="outlined"  size="small">Export JSON</Button>
+          <Button startIcon={<Download />}  onClick={() => handleExport('csv')}  variant="outlined"  size="small">Export CSV</Button>
+          <Button startIcon={<Refresh />}   onClick={fetchMetrics}               variant="outlined"  size="small">Refresh</Button>
+          <Button startIcon={<Settings />}  onClick={() => setConfigOpen(true)}  variant="contained" size="small">Configure</Button>
         </Stack>
       </Box>
 
@@ -698,10 +1101,14 @@ export default function LLMManagement() {
           value={activeTab}
           onChange={(_, v) => setActiveTab(v)}
           sx={{ borderBottom: 1, borderColor: 'divider' }}
+          variant="scrollable"
+          scrollButtons="auto"
         >
-          <Tab icon={<Speed />}      iconPosition="start" label="Overview"    sx={{ textTransform: 'none', fontWeight: 600 }} />
-          <Tab icon={<Hub />}        iconPosition="start" label="Service Map"  sx={{ textTransform: 'none', fontWeight: 600 }} />
-          <Tab icon={<TrendingUp />} iconPosition="start" label="Analytics"   sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<Speed />}      iconPosition="start" label="Overview"     sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<Hub />}        iconPosition="start" label="Service Map"   sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<TrendingUp />} iconPosition="start" label="Analytics"    sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<Person />}     iconPosition="start" label="Top Users"    sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<AccessTime />} iconPosition="start" label="Request Log"  sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
       </Paper>
 
@@ -711,54 +1118,13 @@ export default function LLMManagement() {
           {/* KPI Cards */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
             {[
-              {
-                label: 'Total Requests',
-                value: formatNumber(totalRequests),
-                icon:  <Speed />,
-                color: theme.palette.primary.main,
-              },
-              {
-                label: 'Total Tokens',
-                value: formatNumber(totalTokens),
-                icon:  <Token />,
-                color: theme.palette.info.main,
-              },
-              {
-                label: 'Free (GitHub)',
-                value: `${totalRequests ? Math.round(freeRequests / totalRequests * 100) : 0}%`,
-                icon:  <CheckCircle />,
-                color: theme.palette.success.main,
-                sub:   `${formatNumber(freeRequests)} requests`,
-              },
-              {
-                label: 'Paid Fallback',
-                value: formatNumber(paidRequests),
-                icon:  <Warning />,
-                color: paidRequests > 0 ? theme.palette.error.main : theme.palette.success.main,
-                sub:   paidRequests === 0 ? 'No credit burn! 🎉' : 'Credits consumed',
-              },
-              {
-                label: 'Errors',
-                value: totalErrors,
-                icon:  <Error />,
-                color: totalErrors > 0 ? theme.palette.error.main : theme.palette.text.secondary,
-              },
-              {
-                label: 'Cost Today',
-                value: `$${totalCost.toFixed(4)}`,
-                icon:  <AttachMoney />,
-                color: totalCost > 1 ? theme.palette.error.main : theme.palette.success.main,
-                sub:   totalCost === 0 ? '🟢 $0.00 spent' : undefined,
-              },
-              {
-                label: 'Avg P95 Latency',
-                value: avgP95 ? `${avgP95}ms` : '—',
-                icon:  <AccessTime />,
-                color: avgP95 > 3000 ? theme.palette.error.main
-                     : avgP95 > 1500 ? theme.palette.warning.main
-                     : theme.palette.success.main,
-                sub: p95Values.length ? `across ${p95Values.length} providers` : 'No data yet',
-              },
+              { label: 'Total Requests', value: formatNumber(totalRequests), icon: <Speed />, color: theme.palette.primary.main },
+              { label: 'Total Tokens',   value: formatNumber(totalTokens),   icon: <Token />, color: theme.palette.info.main },
+              { label: 'Free (GitHub)',  value: `${totalRequests ? Math.round(freeRequests / totalRequests * 100) : 0}%`, icon: <CheckCircle />, color: theme.palette.success.main, sub: `${formatNumber(freeRequests)} requests` },
+              { label: 'Paid Fallback',  value: formatNumber(paidRequests),  icon: <Warning />, color: paidRequests > 0 ? theme.palette.error.main : theme.palette.success.main, sub: paidRequests === 0 ? 'No credit burn! 🎉' : 'Credits consumed' },
+              { label: 'Errors',         value: totalErrors,                  icon: <Error />,   color: totalErrors > 0 ? theme.palette.error.main : theme.palette.text.secondary },
+              { label: 'Cost Today',     value: `$${totalCost.toFixed(4)}`,   icon: <AttachMoney />, color: totalCost > 1 ? theme.palette.error.main : theme.palette.success.main, sub: totalCost === 0 ? '🟢 $0.00 spent' : undefined },
+              { label: 'Avg P95 Latency',value: avgP95 ? `${avgP95}ms` : '—', icon: <AccessTime />, color: avgP95 > 3000 ? theme.palette.error.main : avgP95 > 1500 ? theme.palette.warning.main : theme.palette.success.main, sub: p95Values.length ? `across ${p95Values.length} providers` : 'No data yet' },
             ].map((kpi, i) => (
               <Grid size={{ xs: 6, sm: 4, md: 12 / 7 }} key={i}>
                 <Card sx={{ borderLeft: `4px solid ${kpi.color}`, height: '100%' }}>
@@ -779,6 +1145,7 @@ export default function LLMManagement() {
           <Paper sx={{ mb: 3, overflow: 'hidden' }}>
             <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
               <Typography variant="h6" fontWeight={600}>📊 Provider Breakdown</Typography>
+              <Typography variant="caption" color="text.secondary">Use the toggle to enable / disable a provider across all failover chains</Typography>
             </Box>
             <TableContainer>
               <Table size="small">
@@ -794,37 +1161,35 @@ export default function LLMManagement() {
                     <TableCell align="right"><strong>Est. Cost</strong></TableCell>
                     <TableCell align="right"><strong>Errors</strong></TableCell>
                     <TableCell align="center"><strong>Tier</strong></TableCell>
+                    <TableCell align="center"><strong>Enable</strong></TableCell>
                     <TableCell align="center"><strong>Test</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {Object.entries(providers).map(([key, p]) => {
-                    const meta     = PROVIDER_META[key] || { label: key, color: '#888', cost: '?' };
-                    const isActive = metrics?.activeProvider === key;
+                    const meta       = PROVIDER_META[key] || { label: key, color: '#888', cost: '?' };
+                    const isActive   = metrics?.activeProvider === key;
+                    const baseKey    = key.startsWith('github-models') ? 'github-models' : key;
+                    const isDisabled = disabledProviders.includes(baseKey);
                     return (
-                      <TableRow key={key} sx={{ bgcolor: isActive ? alpha(theme.palette.success.main, 0.05) : 'inherit' }}>
+                      <TableRow key={key} sx={{ bgcolor: isDisabled ? alpha(theme.palette.error.main, 0.04) : isActive ? alpha(theme.palette.success.main, 0.05) : 'inherit' }}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Circle sx={{
-                              fontSize: 10,
-                              color: isActive
-                                ? 'success.main'
-                                : p.errors > p.requests * 0.5
-                                  ? 'error.main'
-                                  : 'text.disabled',
-                            }} />
+                            <Circle sx={{ fontSize: 10, color: isDisabled ? 'error.main' : isActive ? 'success.main' : p.errors > p.requests * 0.5 ? 'error.main' : 'text.disabled' }} />
                             <Box>
-                              <Typography variant="body2" fontWeight={600} sx={{ color: meta.color }}>{meta.label}</Typography>
+                              <Typography variant="body2" fontWeight={600} sx={{ color: isDisabled ? 'text.disabled' : meta.color }}>{meta.label}</Typography>
                               <Typography variant="caption" color="text.secondary">{meta.group}</Typography>
                             </Box>
                           </Box>
                         </TableCell>
                         <TableCell align="center">
-                          {isActive
-                            ? <Chip label="Active"  size="small" color="success" />
-                            : p.last_used
-                              ? <Chip label="Standby" size="small" variant="outlined" />
-                              : <Chip label="Idle"    size="small" />
+                          {isDisabled
+                            ? <Chip label="DISABLED" size="small" color="error" />
+                            : isActive
+                              ? <Chip label="Active"  size="small" color="success" />
+                              : p.last_used
+                                ? <Chip label="Standby" size="small" variant="outlined" />
+                                : <Chip label="Idle"    size="small" />
                           }
                         </TableCell>
                         <TableCell align="right"><strong>{formatNumber(p.requests)}</strong></TableCell>
@@ -833,18 +1198,7 @@ export default function LLMManagement() {
                         <TableCell align="right">{p.avg_latency_ms ? `${p.avg_latency_ms}ms` : '—'}</TableCell>
                         <TableCell align="right">
                           {p.p95_latency_ms
-                            ? (
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: p.p95_latency_ms > 3000 ? 'error.main'
-                                       : p.p95_latency_ms > 1500 ? 'warning.main'
-                                       : 'inherit',
-                                }}
-                              >
-                                {p.p95_latency_ms}ms
-                              </Typography>
-                            )
+                            ? <Typography variant="body2" sx={{ color: p.p95_latency_ms > 3000 ? 'error.main' : p.p95_latency_ms > 1500 ? 'warning.main' : 'inherit' }}>{p.p95_latency_ms}ms</Typography>
                             : '—'
                           }
                         </TableCell>
@@ -856,12 +1210,18 @@ export default function LLMManagement() {
                         </TableCell>
                         <TableCell align="right" sx={{ color: p.errors > 0 ? 'error.main' : 'inherit' }}>{p.errors}</TableCell>
                         <TableCell align="center">
-                          <Chip
-                            label={meta.cost}
-                            size="small"
-                            color={meta.cost === 'Free' ? 'success' : 'warning'}
-                            variant="outlined"
-                          />
+                          <Chip label={meta.cost} size="small" color={meta.cost === 'Free' ? 'success' : 'warning'} variant="outlined" />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip title={isDisabled ? `Enable ${meta.label}` : `Disable ${meta.label}`}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleProviderToggle(baseKey)}
+                              sx={{ color: isDisabled ? 'success.main' : 'error.main' }}
+                            >
+                              {isDisabled ? <PowerSettingsNew fontSize="small" /> : <Block fontSize="small" />}
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                         <TableCell align="center">
                           <Tooltip title={`Test ${meta.label}`}>
@@ -873,10 +1233,7 @@ export default function LLMManagement() {
                               )}
                               disabled={testing !== null}
                             >
-                              {testing === key
-                                ? <CircularProgress size={16} />
-                                : <PlayArrow fontSize="small" />
-                              }
+                              {testing === key ? <CircularProgress size={16} /> : <PlayArrow fontSize="small" />}
                             </IconButton>
                           </Tooltip>
                         </TableCell>
@@ -890,11 +1247,7 @@ export default function LLMManagement() {
 
           {/* Test Result */}
           {testResult && (
-            <Alert
-              severity={testResult.success ? 'success' : 'error'}
-              sx={{ mb: 3 }}
-              onClose={() => setTestResult(null)}
-            >
+            <Alert severity={testResult.success ? 'success' : 'error'} sx={{ mb: 3 }} onClose={() => setTestResult(null)}>
               {testResult.success
                 ? `✅ ${testResult.provider}/${testResult.model || ''} responded "${testResult.text}" in ${testResult.latencyMs}ms`
                 : `❌ ${testResult.provider} failed: ${testResult.error}`
@@ -913,14 +1266,15 @@ export default function LLMManagement() {
                   grok:            { icon: <SmartToy />,   color: 'secondary', label: config?.grokModel || 'grok-3' },
                 };
                 const m = chainMeta[provider] || { icon: <Circle />, color: 'default', label: provider };
+                const isDisabled = disabledProviders.includes(provider);
                 return (
                   <React.Fragment key={provider}>
                     <Chip
                       icon={m.icon}
-                      label={m.label}
-                      color={m.color}
-                      variant={i === 0 ? 'filled' : 'outlined'}
-                      sx={{ fontWeight: i === 0 ? 700 : 400 }}
+                      label={`${m.label}${isDisabled ? ' (disabled)' : ''}`}
+                      color={isDisabled ? 'default' : m.color}
+                      variant={i === 0 && !isDisabled ? 'filled' : 'outlined'}
+                      sx={{ fontWeight: i === 0 ? 700 : 400, opacity: isDisabled ? 0.5 : 1 }}
                     />
                     {i < arr.length - 1 && <ArrowForward sx={{ color: 'text.disabled', fontSize: 18 }} />}
                   </React.Fragment>
@@ -932,19 +1286,14 @@ export default function LLMManagement() {
             </Typography>
           </Paper>
 
-          {/* Quota Countdown Chip */}
+          {/* Quota Countdown */}
           {quotaCountdown && (
             <Box sx={{ mb: 3 }}>
-              <Chip
-                size="small"
-                icon={<AccessTime sx={{ fontSize: 14 }} />}
-                label={quotaCountdown}
-                variant="outlined"
-              />
+              <Chip size="small" icon={<AccessTime sx={{ fontSize: 14 }} />} label={quotaCountdown} variant="outlined" />
             </Box>
           )}
 
-          {/* Failover Log — enhanced */}
+          {/* Failover Log */}
           {metrics?.failoverLog?.length > 0 && (
             <Paper sx={{ mb: 3, overflow: 'hidden' }}>
               <Box sx={{ p: 2, bgcolor: alpha(theme.palette.warning.main, 0.06) }}>
@@ -965,31 +1314,17 @@ export default function LLMManagement() {
                   <TableBody>
                     {[...metrics.failoverLog].reverse().slice(0, 10).map((log, i) => (
                       <TableRow key={i}>
-                        <TableCell>
-                          <Typography variant="caption">{new Date(log.timestamp).toLocaleString()}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={log.from || '—'} size="small" color="error" variant="outlined" />
-                        </TableCell>
+                        <TableCell><Typography variant="caption">{new Date(log.timestamp).toLocaleString()}</Typography></TableCell>
+                        <TableCell><Chip label={log.from || '—'} size="small" color="error" variant="outlined" /></TableCell>
                         <TableCell>
                           {log.to
                             ? <Chip label={log.to} size="small" color="info" variant="outlined" />
                             : <Typography variant="caption" color="text.disabled">—</Typography>
                           }
                         </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                            {log.service || '—'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="caption">
-                            {log.latencyMs ? `${log.latencyMs}ms` : '—'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ wordBreak: 'break-word' }}>{log.error}</Typography>
-                        </TableCell>
+                        <TableCell><Typography variant="caption" sx={{ fontFamily: 'monospace' }}>{log.service || '—'}</Typography></TableCell>
+                        <TableCell align="right"><Typography variant="caption">{log.latencyMs ? `${log.latencyMs}ms` : '—'}</Typography></TableCell>
+                        <TableCell><Typography variant="caption" sx={{ wordBreak: 'break-word' }}>{log.error}</Typography></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1009,15 +1344,24 @@ export default function LLMManagement() {
           categoryFilter={categoryFilter}
           onSearchChange={setSearch}
           onCategoryChange={setCategoryFilter}
+          stoppedServices={stoppedServices}
+          onStopService={handleStopService}
+          onStartService={handleStartService}
+          serviceOverrides={serviceOverrides}
+          onOpenOverride={handleOpenOverride}
         />
       )}
 
       {/* ═══════════════════ TAB 2: ANALYTICS ═══════════════════ */}
-      {activeTab === 2 && (
-        <AnalyticsTab history={history} theme={theme} />
-      )}
+      {activeTab === 2 && <AnalyticsTab history={history} theme={theme} />}
 
-      {/* ═══════════════════ CONFIG DIALOG ═══════════════════ */}
+      {/* ═══════════════════ TAB 3: TOP USERS ═══════════════════ */}
+      {activeTab === 3 && <TopUsersTab topUsers={topUsers} theme={theme} />}
+
+      {/* ═══════════════════ TAB 4: REQUEST LOG ═══════════════════ */}
+      {activeTab === 4 && <RequestLogTab theme={theme} />}
+
+      {/* ═══════════════════ CONFIG DIALOG ═══════════════════════ */}
       <Dialog open={configOpen} onClose={() => setConfigOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>⚙️ LLM Routing Configuration</DialogTitle>
         <DialogContent>
@@ -1025,6 +1369,7 @@ export default function LLMManagement() {
             Changes take effect immediately. No restart needed.
           </Typography>
 
+          {/* Provider Priority */}
           <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
             🔄 Provider Priority (drag to reorder)
           </Typography>
@@ -1034,53 +1379,19 @@ export default function LLMManagement() {
           <Paper variant="outlined" sx={{ mb: 3, overflow: 'hidden' }}>
             {(editConfig.failoverChain || ['github-models', 'claude', 'grok']).map((provider, idx, arr) => {
               const chainProviderMeta = {
-                'github-models': { label: '☁️ GitHub Models',  color: 'success',   cost: 'Free' },
-                claude:          { label: '🟠 Anthropic Claude', color: 'warning',  cost: 'Paid' },
-                grok:            { label: '🟣 xAI Grok',        color: 'secondary', cost: 'Paid' },
+                'github-models': { label: '☁️ GitHub Models',   color: 'success',   cost: 'Free' },
+                claude:          { label: '🟠 Anthropic Claude', color: 'warning',   cost: 'Paid' },
+                grok:            { label: '🟣 xAI Grok',         color: 'secondary', cost: 'Paid' },
               };
               const info = chainProviderMeta[provider] || { label: provider, color: 'default', cost: '?' };
               return (
-                <Box
-                  key={provider}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    px: 2, py: 1.5,
-                    borderBottom: idx < arr.length - 1 ? '1px solid' : 'none',
-                    borderColor: 'divider',
-                    bgcolor: idx === 0 ? alpha(theme.palette.primary.main, 0.06) : 'transparent',
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontWeight: idx === 0 ? 700 : 400, flex: 1 }}>
-                    {idx + 1}. {info.label}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    label={idx === 0 ? 'PRIMARY' : info.cost}
-                    color={idx === 0 ? 'primary' : info.cost === 'Free' ? 'success' : 'error'}
-                    variant={idx === 0 ? 'filled' : 'outlined'}
-                    sx={{ mr: 1 }}
-                  />
-                  <IconButton
-                    size="small"
-                    disabled={idx === 0}
-                    onClick={() => {
-                      const chain = [...(editConfig.failoverChain || ['github-models', 'claude', 'grok'])];
-                      [chain[idx - 1], chain[idx]] = [chain[idx], chain[idx - 1]];
-                      setEditConfig({ ...editConfig, failoverChain: chain });
-                    }}
-                  >
+                <Box key={provider} sx={{ display: 'flex', alignItems: 'center', px: 2, py: 1.5, borderBottom: idx < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider', bgcolor: idx === 0 ? alpha(theme.palette.primary.main, 0.06) : 'transparent' }}>
+                  <Typography variant="body2" sx={{ fontWeight: idx === 0 ? 700 : 400, flex: 1 }}>{idx + 1}. {info.label}</Typography>
+                  <Chip size="small" label={idx === 0 ? 'PRIMARY' : info.cost} color={idx === 0 ? 'primary' : info.cost === 'Free' ? 'success' : 'error'} variant={idx === 0 ? 'filled' : 'outlined'} sx={{ mr: 1 }} />
+                  <IconButton size="small" disabled={idx === 0} onClick={() => { const chain = [...(editConfig.failoverChain || ['github-models', 'claude', 'grok'])]; [chain[idx - 1], chain[idx]] = [chain[idx], chain[idx - 1]]; setEditConfig({ ...editConfig, failoverChain: chain }); }}>
                     <ArrowUpward fontSize="small" />
                   </IconButton>
-                  <IconButton
-                    size="small"
-                    disabled={idx === arr.length - 1}
-                    onClick={() => {
-                      const chain = [...(editConfig.failoverChain || ['github-models', 'claude', 'grok'])];
-                      [chain[idx], chain[idx + 1]] = [chain[idx + 1], chain[idx]];
-                      setEditConfig({ ...editConfig, failoverChain: chain });
-                    }}
-                  >
+                  <IconButton size="small" disabled={idx === arr.length - 1} onClick={() => { const chain = [...(editConfig.failoverChain || ['github-models', 'claude', 'grok'])]; [chain[idx], chain[idx + 1]] = [chain[idx + 1], chain[idx]]; setEditConfig({ ...editConfig, failoverChain: chain }); }}>
                     <ArrowDownward fontSize="small" />
                   </IconButton>
                 </Box>
@@ -1089,30 +1400,18 @@ export default function LLMManagement() {
           </Paper>
 
           <Divider sx={{ my: 2 }} />
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
-            🎯 Model Selection (per provider)
-          </Typography>
+
+          {/* Model Selection */}
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>🎯 Model Selection (per provider)</Typography>
 
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>GitHub Models — Primary</InputLabel>
-            <Select
-              value={editConfig.primaryModels?.[0] || 'gpt-4.1'}
-              label="GitHub Models — Primary"
-              onChange={(e) => {
-                const current = editConfig.primaryModels || ['gpt-4.1', 'gpt-4o'];
-                setEditConfig({
-                  ...editConfig,
-                  primaryModels: [e.target.value, ...current.filter(m => m !== e.target.value)],
-                });
-              }}
-            >
+            <Select value={editConfig.primaryModels?.[0] || 'gpt-4.1'} label="GitHub Models — Primary" onChange={(e) => { const current = editConfig.primaryModels || ['gpt-4.1', 'gpt-4o']; setEditConfig({ ...editConfig, primaryModels: [e.target.value, ...current.filter(m => m !== e.target.value)] }); }}>
               {(availableModels?.githubModels || []).map(m => (
                 <MenuItem key={m} value={m}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                     <span>{m}</span>
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-                      {MODEL_INFO[m]?.tier || '🟢 Free'} — {MODEL_INFO[m]?.note || ''}
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>{MODEL_INFO[m]?.tier || '🟢 Free'} — {MODEL_INFO[m]?.note || ''}</Typography>
                   </Box>
                 </MenuItem>
               ))}
@@ -1121,18 +1420,12 @@ export default function LLMManagement() {
 
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>GitHub Models — Tool-Calling</InputLabel>
-            <Select
-              value={editConfig.toolModel || 'gpt-4.1'}
-              label="GitHub Models — Tool-Calling"
-              onChange={(e) => setEditConfig({ ...editConfig, toolModel: e.target.value })}
-            >
+            <Select value={editConfig.toolModel || 'gpt-4.1'} label="GitHub Models — Tool-Calling" onChange={(e) => setEditConfig({ ...editConfig, toolModel: e.target.value })}>
               {(availableModels?.githubModels || []).map(m => (
                 <MenuItem key={m} value={m}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                     <span>{m}</span>
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-                      {MODEL_INFO[m]?.tier || '🟢 Free'} — {MODEL_INFO[m]?.note || ''}
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>{MODEL_INFO[m]?.tier || '🟢 Free'} — {MODEL_INFO[m]?.note || ''}</Typography>
                   </Box>
                 </MenuItem>
               ))}
@@ -1141,47 +1434,146 @@ export default function LLMManagement() {
 
           <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>Anthropic — Claude Model</InputLabel>
-            <Select
-              value={editConfig.claudeModel || 'claude-sonnet-4-6'}
-              label="Anthropic — Claude Model"
-              onChange={(e) => setEditConfig({ ...editConfig, claudeModel: e.target.value })}
-            >
+            <Select value={editConfig.claudeModel || 'claude-sonnet-4-6'} label="Anthropic — Claude Model" onChange={(e) => setEditConfig({ ...editConfig, claudeModel: e.target.value })}>
               {(availableModels?.claude || []).map(m => (
                 <MenuItem key={m} value={m}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                     <span>{m}</span>
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-                      {MODEL_INFO[m]?.note || ''}
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>{MODEL_INFO[m]?.note || ''}</Typography>
                   </Box>
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          <FormControl fullWidth>
+          <FormControl fullWidth sx={{ mb: 2 }}>
             <InputLabel>xAI — Grok Model</InputLabel>
-            <Select
-              value={editConfig.grokModel || 'grok-3'}
-              label="xAI — Grok Model"
-              onChange={(e) => setEditConfig({ ...editConfig, grokModel: e.target.value })}
-            >
+            <Select value={editConfig.grokModel || 'grok-3'} label="xAI — Grok Model" onChange={(e) => setEditConfig({ ...editConfig, grokModel: e.target.value })}>
               {(availableModels?.grok || []).map(m => (
                 <MenuItem key={m} value={m}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                     <span>{m}</span>
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-                      {MODEL_INFO[m]?.note || ''}
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>{MODEL_INFO[m]?.note || ''}</Typography>
                   </Box>
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Budget Controls */}
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>💰 Spend Budget Controls</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+            Set 0 to disable a limit. Alerts show when threshold % is reached.
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Daily Limit (USD)"
+                type="number"
+                value={editBudget.dailyLimitUsd ?? 0}
+                onChange={e => setEditBudget({ ...editBudget, dailyLimitUsd: parseFloat(e.target.value) || 0 })}
+                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Monthly Limit (USD)"
+                type="number"
+                value={editBudget.monthlyLimitUsd ?? 0}
+                onChange={e => setEditBudget({ ...editBudget, monthlyLimitUsd: parseFloat(e.target.value) || 0 })}
+                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Cost Alert Threshold (%)"
+                type="number"
+                value={editBudget.alertThresholdPct ?? 80}
+                onChange={e => setEditBudget({ ...editBudget, alertThresholdPct: parseInt(e.target.value) || 80 })}
+                InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="GH Quota Alert Threshold (%)"
+                type="number"
+                value={editBudget.quotaAlertPct ?? 80}
+                onChange={e => setEditBudget({ ...editBudget, quotaAlertPct: parseInt(e.target.value) || 80 })}
+                InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfigOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveConfig} variant="contained" color="primary">Save & Apply</Button>
+          <Button onClick={handleSaveBudget} variant="outlined" color="secondary">Save Budget</Button>
+          <Button onClick={handleSaveConfig} variant="contained" color="primary">Save Routing</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ═══════════════════ OVERRIDE DIALOG ═════════════════════ */}
+      <Dialog open={overrideOpen} onClose={() => setOverrideOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>⚙️ Model Override — <em>{overrideService}</em></DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Pin a specific provider + model for this service. Overrides the default failover chain.
+            Leave provider blank to clear the override.
+          </Typography>
+
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Provider</InputLabel>
+            <Select value={overrideProvider} label="Provider" onChange={e => { setOverrideProvider(e.target.value); setOverrideModel(''); }}>
+              <MenuItem value=""><em>— Clear override —</em></MenuItem>
+              {['github-models', 'claude', 'grok'].map(p => (
+                <MenuItem key={p} value={p}>{p}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {overrideProvider && (
+            <FormControl fullWidth>
+              <InputLabel>Model</InputLabel>
+              <Select value={overrideModel} label="Model" onChange={e => setOverrideModel(e.target.value)}>
+                <MenuItem value=""><em>— Use default model —</em></MenuItem>
+                {(PROVIDER_MODELS[overrideProvider] || []).map(m => (
+                  <MenuItem key={m} value={m}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <span>{m}</span>
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>{MODEL_INFO[m]?.tier || ''}</Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {serviceOverrides[overrideService] && (
+            <Button
+              color="error"
+              startIcon={<DeleteOutline />}
+              onClick={async () => {
+                await api.delete(`/admin/llm/service/${overrideService}/override`);
+                setServiceOverrides(prev => { const n = { ...prev }; delete n[overrideService]; return n; });
+                setOverrideOpen(false);
+              }}
+            >
+              Clear Override
+            </Button>
+          )}
+          <Box sx={{ flex: 1 }} />
+          <Button onClick={() => setOverrideOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveOverride} variant="contained">Save</Button>
         </DialogActions>
       </Dialog>
 
