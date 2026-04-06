@@ -147,70 +147,180 @@ const StatPill = ({ label, value, color, pulse = false }) => (
 );
 
 /* ═══════════════════════════════════════════════════════════════
- *  📊  QUICK STATS PANEL (Fleet tab right column)
+ *  📊  TELEMETRY PANEL — visual metric cards with rings & bars
  * ═══════════════════════════════════════════════════════════════ */
+
+/* SVG progress ring for a single metric */
+const MiniRing = ({ value, max, color, size = 48, stroke = 4 }) => {
+  const pct = max > 0 ? Math.min(value / max, 1) : 0;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const off = circ - pct * circ;
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={`rgba(${hexRgb(color)},0.12)`} strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={off}
+        style={{ transition: 'stroke-dashoffset 0.8s ease' }} />
+    </svg>
+  );
+};
+
+/* Single stat card */
+const StatCard = ({ icon, label, value, sub, color, ring, max, onClick }) => (
+  <Box onClick={onClick} sx={{
+    display: 'flex', alignItems: 'center', gap: 1.5,
+    p: 1.5, borderRadius: 2.5,
+    background: `rgba(${hexRgb(color)},0.04)`,
+    border: `1px solid rgba(${hexRgb(color)},0.12)`,
+    cursor: onClick ? 'pointer' : 'default',
+    transition: 'all 0.25s',
+    '&:hover': onClick ? {
+      background: `rgba(${hexRgb(color)},0.10)`,
+      border: `1px solid rgba(${hexRgb(color)},0.28)`,
+      transform: 'translateY(-1px)',
+      boxShadow: `0 4px 12px rgba(${hexRgb(color)},0.12)`,
+    } : {},
+  }}>
+    {ring != null ? (
+      <Box sx={{ position: 'relative', flexShrink: 0 }}>
+        <MiniRing value={ring} max={max || 1} color={color} size={44} />
+        <Box sx={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 800, color, fontFamily: MC.mono }}>
+            {max > 0 ? Math.round((ring / max) * 100) : 0}%
+          </Typography>
+        </Box>
+      </Box>
+    ) : (
+      <Box sx={{
+        width: 36, height: 36, borderRadius: 2, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: `rgba(${hexRgb(color)},0.12)`,
+        fontSize: '1rem',
+      }}>
+        {icon}
+      </Box>
+    )}
+    <Box sx={{ flex: 1, minWidth: 0 }}>
+      <Typography sx={{
+        fontWeight: 800, fontSize: '1.1rem', color,
+        fontFamily: MC.mono, lineHeight: 1.2,
+        textShadow: `0 0 12px rgba(${hexRgb(color)},0.3)`,
+      }}>
+        {value}
+      </Typography>
+      <Typography variant="caption" sx={{
+        color: MC.slateL, fontSize: '0.62rem', fontWeight: 600,
+        letterSpacing: '0.5px', textTransform: 'uppercase',
+      }}>
+        {label}
+      </Typography>
+      {sub && (
+        <Typography variant="caption" sx={{
+          display: 'block', color: MC.slate, fontSize: '0.58rem', mt: 0.25,
+        }}>
+          {sub}
+        </Typography>
+      )}
+    </Box>
+  </Box>
+);
+
 const QuickStatsPanel = ({ agents, tasksInProgress, apiAvailable, avgSuccessRate }) => {
   const active  = agents.filter(a => ['busy','active','processing'].includes(a.status)).length;
   const idle    = agents.filter(a => a.status === 'idle').length;
   const errors  = agents.filter(a => a.status === 'error').length;
-
-  const rows = [
-    { label: 'Fleet Size',    value: agents.length,  color: MC.violet },
-    { label: 'Active Now',    value: active,         color: MC.green  },
-    { label: 'Idle',          value: idle,           color: MC.slate  },
-    { label: 'Errors',        value: errors,         color: errors > 0 ? MC.red : MC.slate },
-    { label: 'Tasks Running', value: tasksInProgress, color: MC.blue  },
-    { label: 'Success Rate',  value: avgSuccessRate !== null ? `${avgSuccessRate}%` : '—',
-                               color: avgSuccessRate === null ? MC.slate
-                                    : avgSuccessRate >= 90 ? MC.green
-                                    : avgSuccessRate >= 70 ? MC.amber
-                                    : MC.red },
-    { label: 'Uplink',        value: apiAvailable ? 'LIVE' : 'DOWN',
-                               color: apiAvailable ? MC.green : MC.red },
-  ];
+  const withData = agents.filter(a => a.tasksCompleted > 0).length;
 
   return (
-    <Paper elevation={0} sx={{
-      p: 2.5, height: '100%',
-      background: MC.surfaceH,
-      border: `1px solid ${alpha(MC.green, 0.10)}`,
-      borderRadius: 3,
-      backdropFilter: 'blur(12px)',
-    }}>
-      <Typography variant="subtitle2" sx={{
-        color: MC.slateL, fontWeight: 700, letterSpacing: 2,
-        fontSize: '0.65rem', textTransform: 'uppercase', mb: 2,
-      }}>
-        ⚡ Live Telemetry
-      </Typography>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {rows.map((r) => (
-          <Box key={r.label} sx={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            py: 0.9, px: 1.5, borderRadius: 2,
-            background: MC.card,
-            border: '1px solid rgba(255,255,255,0.04)',
-            transition: 'background 0.2s',
-            '&:hover': { background: 'rgba(255,255,255,0.05)' },
+      {/* ─── METRIC CARDS (2-col grid) ─── */}
+      <Paper elevation={0} sx={{
+        p: 2, background: MC.surfaceH, borderRadius: 3,
+        border: `1px solid rgba(255,255,255,0.06)`,
+        backdropFilter: 'blur(12px)',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Typography variant="caption" sx={{
+            color: MC.slateL, fontWeight: 700, letterSpacing: 2,
+            fontSize: '0.62rem', textTransform: 'uppercase',
           }}>
-            <Typography variant="caption" sx={{ color: MC.slateL, fontWeight: 500, fontSize: '0.74rem' }}>
-              {r.label}
-            </Typography>
-            <Typography variant="body2" sx={{
-              color: r.color, fontWeight: 800, fontFamily: MC.mono,
-              fontSize: '0.85rem', textShadow: `0 0 8px ${r.color}30`,
+            ⚡ Fleet Telemetry
+          </Typography>
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 0.5,
+            px: 1, py: 0.25, borderRadius: 10,
+            background: apiAvailable ? `rgba(${hexRgb(MC.green)},0.10)` : `rgba(${hexRgb(MC.red)},0.10)`,
+            border: `1px solid ${apiAvailable ? MC.green : MC.red}30`,
+          }}>
+            <Box sx={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: apiAvailable ? MC.green : MC.red,
+              boxShadow: `0 0 6px ${apiAvailable ? MC.green : MC.red}`,
+              animation: apiAvailable ? 'cc-pulse 2s ease-in-out infinite' : 'none',
+            }} />
+            <Typography variant="caption" sx={{
+              fontSize: '0.58rem', fontWeight: 700,
+              color: apiAvailable ? MC.green : MC.red,
+              letterSpacing: '0.5px',
             }}>
-              {r.value}
+              {apiAvailable ? 'LIVE' : 'OFFLINE'}
             </Typography>
           </Box>
-        ))}
-      </Box>
+        </Box>
 
-      <Box sx={{ mt: 2.5 }}>
+        <Box sx={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1,
+        }}>
+          <StatCard
+            label="Active Agents"
+            value={active}
+            sub={`${idle} idle · ${agents.length} total`}
+            color={active > 0 ? MC.green : MC.slate}
+            ring={active}
+            max={agents.length}
+          />
+          <StatCard
+            label="Success Rate"
+            value={avgSuccessRate !== null ? `${avgSuccessRate}%` : '—'}
+            sub={avgSuccessRate !== null ? (avgSuccessRate >= 90 ? 'Excellent' : avgSuccessRate >= 70 ? 'Moderate' : 'Needs attention') : 'No data yet'}
+            color={avgSuccessRate === null ? MC.slate : avgSuccessRate >= 90 ? MC.green : avgSuccessRate >= 70 ? MC.amber : MC.red}
+            icon="📊"
+          />
+          <StatCard
+            label="Tasks Running"
+            value={tasksInProgress}
+            sub={`${withData} agents have history`}
+            color={tasksInProgress > 0 ? MC.blue : MC.slate}
+            icon="🔄"
+          />
+          <StatCard
+            label={errors > 0 ? 'Errors Detected' : 'Fleet Health'}
+            value={errors > 0 ? errors : '✓'}
+            sub={errors > 0 ? 'Investigate immediately' : 'No errors'}
+            color={errors > 0 ? MC.red : MC.green}
+            icon={errors > 0 ? '🚨' : '💚'}
+          />
+        </Box>
+      </Paper>
+
+      {/* ─── TASK QUEUE ─── */}
+      <Paper elevation={0} sx={{
+        flex: 1, minHeight: 0, overflow: 'hidden',
+        background: MC.surfaceH, borderRadius: 3,
+        border: `1px solid rgba(255,255,255,0.06)`,
+        backdropFilter: 'blur(12px)',
+        display: 'flex', flexDirection: 'column',
+      }}>
         <TaskQueue />
-      </Box>
-    </Paper>
+      </Paper>
+    </Box>
   );
 };
 
