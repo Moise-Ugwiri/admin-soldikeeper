@@ -1,36 +1,28 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Box, Grid, Alert, Snackbar, useTheme } from '@mui/material';
-import {
-  People, Receipt, MonetizationOn, Group,
-} from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAdminData } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { exportToCSV, exportToExcel } from '../../utils/exportUtils';
 import { downloadReport } from '../../utils/pdfReportGenerator';
 import websocketService from '../../services/websocketService';
 import { AIAgentWidget } from './AIAgent';
 
 import MissionStrip from './Overview/MissionStrip';
-import PulseHero from './Overview/PulseHero';
-import StatTileSpark from './Overview/StatTileSpark';
-import AgentFleetStrip from './Overview/AgentFleetStrip';
+import BriefingHero from './Overview/BriefingHero';
+import BentoStats from './Overview/BentoStats';
+import OrbitalFleet from './Overview/OrbitalFleet';
+import NowPlaying from './Overview/NowPlaying';
 import SystemVitals from './Overview/SystemVitals';
-import LiveEventFeed from './Overview/LiveEventFeed';
 import ChartCard from './Overview/ChartCard';
 import { SecurityAlertsCard } from './Overview/SidebarCards';
 
 const OverviewDialogs = lazy(() => import('./Overview/OverviewDialogs'));
 
-const KPI = {
-  users: '#667eea',
-  transactions: '#10b981',
-  income: '#f59e0b',
-  active: '#3b82f6',
-};
-
 const AdminOverview = () => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { user } = useAuth() || {};
 
   const {
     adminStats, realtimeData, analytics, securityAlerts, escalationStats, loading,
@@ -77,6 +69,10 @@ const AdminOverview = () => {
   const totalTx          = adminStats?.totalTransactions ?? 0;
   const totalIncome      = adminStats?.totalUserIncome || adminStats?.totalRevenue || 0;
   const activeNow        = realtimeData?.activeSessions ?? adminStats?.activeUsers ?? 0;
+  const newUsersPeriod   = adminStats?.newUsers ?? 0;
+  const signupsToday     = adminStats?.signupsToday ?? adminStats?.newUsers ?? 0;
+  const conversion       = adminStats?.conversionRate
+    ?? (adminStats?.proUsers && totalUsers ? (adminStats.proUsers / totalUsers) * 100 : 0);
   const perfPct          = realtimeData?.performance ?? 95;
   const storagePct       = realtimeData?.storageUsage ?? 68;
   const memoryPct        = realtimeData?.memoryUsage ?? 45;
@@ -84,26 +80,13 @@ const AdminOverview = () => {
   const uptimePct        = realtimeData?.uptime ?? 99.9;
   const escalationsCount = escalationStats?.pending ?? 0;
   const alertsCount      = securityAlerts?.length || 0;
+  const fleetActive      = realtimeData?.fleetActive ?? 0;
 
-  const sparkSeries = useCallback((base, seed) => {
-    if (!base || base <= 0) return [0, 0, 0, 0, 0, 0, 0];
-    const n = 12;
-    return Array.from({ length: n }, (_, i) => {
-      const wave = 0.7 + 0.6 * (((i * seed) % 17) / 17);
-      return Math.max(0, Math.round((base / n) * wave));
-    });
-  }, []);
-  const userSpark   = useMemo(() => sparkSeries(totalUsers, 31), [totalUsers, sparkSeries]);
-  const txSpark     = useMemo(() => sparkSeries(totalTx, 47), [totalTx, sparkSeries]);
-  const incomeSpark = useMemo(() => sparkSeries(totalIncome, 23), [totalIncome, sparkSeries]);
-  const activeSpark = useMemo(() => sparkSeries(activeNow * 12, 53), [activeNow, sparkSeries]);
-
-  const pulseSeries = useMemo(() => {
-    if (analytics?.userRegistrations?.length) {
-      return analytics.userRegistrations.slice(-12).map(d => d.activeCount || d.count || 0);
-    }
-    return activeSpark;
-  }, [analytics, activeSpark]);
+  const operatorName = useMemo(() => {
+    const n = user?.name || user?.firstName || user?.email || '';
+    if (!n) return 'Operator';
+    return String(n).split(/[ @]/)[0];
+  }, [user]);
 
   const vitals = useMemo(() => [
     { name: 'CPU / Performance', kind: 'performance', value: perfPct,    color: chartColors.success, status: perfPct < 70 ? 'critical' : perfPct < 90 ? 'warning' : 'good' },
@@ -132,15 +115,6 @@ const AdminOverview = () => {
     }
     return [];
   }, [analytics, totalIncome]);
-
-  const recentActivity = useMemo(() => {
-    const out = [];
-    if (adminStats?.newUsers > 0) out.push({ message: `${adminStats.newUsers} new users registered this period`, time: new Date().toISOString() });
-    if (totalTx > 0) out.push({ message: `${totalTx.toLocaleString()} total transactions tracked`, time: new Date().toISOString() });
-    if (totalIncome > 0) out.push({ message: `€${totalIncome.toLocaleString()} user income tracked`, time: new Date().toISOString() });
-    if (perfPct) out.push({ message: `System performance at ${perfPct}%`, time: new Date().toISOString() });
-    return out;
-  }, [adminStats, totalTx, totalIncome, perfPct]);
 
   const handleRefresh = useCallback(() => {
     fetchAdminStats?.(); fetchRealtimeData?.(); fetchAnalytics?.();
@@ -218,7 +192,7 @@ const AdminOverview = () => {
     <Box sx={{ pb: { xs: 2, sm: 3 } }}>
       <MissionStrip
         systemHealth={systemHealth}
-        fleetActive={realtimeData?.fleetActive ?? 0}
+        fleetActive={fleetActive}
         fleetTotal={18}
         alertsCount={alertsCount}
         escalationsCount={escalationsCount}
@@ -240,68 +214,51 @@ const AdminOverview = () => {
         </Alert>
       )}
 
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, sm: 2.5 } }}>
-        <Grid item xs={12} lg={5}>
-          <PulseHero
-            label={t('admin.overview.pulse', 'Today\'s pulse')}
-            value={activeNow}
-            unit="active sessions"
-            delta={typeof adminStats?.userGrowth === 'number' ? adminStats.userGrowth : null}
-            series={pulseSeries}
-            caption={`${totalUsers.toLocaleString()} total users · ${totalTx.toLocaleString()} transactions tracked`}
-            accent={KPI.users}
-          />
-        </Grid>
-        <Grid item xs={12} lg={7}>
-          <AgentFleetStrip />
-        </Grid>
-      </Grid>
+      {/* Apollo's morning briefing — full-width hero */}
+      <Box sx={{ mb: { xs: 2, sm: 2.5 } }}>
+        <BriefingHero
+          operatorName={operatorName}
+          totalUsers={totalUsers}
+          newUsers={newUsersPeriod}
+          userGrowth={typeof adminStats?.userGrowth === 'number' ? adminStats.userGrowth : null}
+          totalTx={totalTx}
+          txGrowth={typeof adminStats?.transactionGrowth === 'number' ? adminStats.transactionGrowth : null}
+          totalIncome={totalIncome}
+          activeNow={activeNow}
+          fleetActive={fleetActive}
+          fleetTotal={18}
+          alertsCount={alertsCount}
+          escalationsCount={escalationsCount}
+        />
+      </Box>
 
-      <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, sm: 2.5 } }}>
-        <Grid item xs={6} md={3}>
-          <StatTileSpark
-            label="Total Users"
-            value={totalUsers.toLocaleString()}
-            series={userSpark}
-            delta={typeof adminStats?.userGrowth === 'number' ? adminStats.userGrowth : null}
-            icon={<People />}
-            color={KPI.users}
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatTileSpark
-            label="Transactions"
-            value={totalTx.toLocaleString()}
-            series={txSpark}
-            delta={typeof adminStats?.transactionGrowth === 'number' ? adminStats.transactionGrowth : null}
-            icon={<Receipt />}
-            color={KPI.transactions}
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatTileSpark
-            label="User Income"
-            value={`€${(totalIncome / 1000).toFixed(1)}K`}
-            series={incomeSpark}
-            hint="(not platform revenue)"
-            icon={<MonetizationOn />}
-            color={KPI.income}
-          />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <StatTileSpark
-            label="Active Now"
-            value={activeNow.toLocaleString()}
-            series={activeSpark}
-            hint={wsLive ? 'live' : 'offline'}
-            icon={<Group />}
-            color={KPI.active}
-          />
-        </Grid>
-      </Grid>
+      {/* Bento KPI grid — asymmetric, mixed visual treatments */}
+      <Box sx={{ mb: { xs: 2, sm: 2.5 } }}>
+        <BentoStats
+          totalUsers={totalUsers}
+          userGrowth={typeof adminStats?.userGrowth === 'number' ? adminStats.userGrowth : null}
+          totalTx={totalTx}
+          txGrowth={typeof adminStats?.transactionGrowth === 'number' ? adminStats.transactionGrowth : null}
+          totalIncome={totalIncome}
+          activeNow={activeNow}
+          signupsToday={signupsToday}
+          conversion={conversion}
+        />
+      </Box>
 
+      {/* Constellation + Now Playing side-by-side */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 2, sm: 2.5 } }}>
         <Grid item xs={12} lg={8}>
+          <OrbitalFleet height={460} />
+        </Grid>
+        <Grid item xs={12} lg={4}>
+          <NowPlaying height={460} />
+        </Grid>
+      </Grid>
+
+      {/* Revenue + Vitals + Sidebar */}
+      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+        <Grid item xs={12} lg={7}>
           <ChartCard
             title={t('admin.overview.charts.revenue') || 'Revenue / User Income'}
             chip={{ label: 'Last 6 months' }}
@@ -330,26 +287,20 @@ const AdminOverview = () => {
             )}
           </ChartCard>
         </Grid>
-        <Grid item xs={12} lg={4}>
+        <Grid item xs={12} sm={6} lg={3}>
           <SystemVitals data={vitals} />
         </Grid>
-      </Grid>
-
-      <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-        <Grid item xs={12} md={5}>
-          <LiveEventFeed seedActivity={recentActivity} />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <SecurityAlertsCard
-            alerts={securityAlerts || []}
-            title={t('admin.overview.securityAlerts') || 'Security Alerts'}
-            emptyText={t('admin.overview.noSecurityAlerts') || 'All clear.'}
-            errorColor={chartColors.error}
-            warnColor={chartColors.warning}
-          />
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <AIAgentWidget />
+        <Grid item xs={12} sm={6} lg={2}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
+            <SecurityAlertsCard
+              alerts={securityAlerts || []}
+              title={t('admin.overview.securityAlerts') || 'Security Alerts'}
+              emptyText={t('admin.overview.noSecurityAlerts') || 'All clear.'}
+              errorColor={chartColors.error}
+              warnColor={chartColors.warning}
+            />
+            <AIAgentWidget />
+          </Box>
         </Grid>
       </Grid>
 
