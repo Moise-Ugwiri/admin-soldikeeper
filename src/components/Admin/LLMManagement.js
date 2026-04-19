@@ -125,18 +125,27 @@ function _timeAgo(iso) {
 // ── Analytics Tab ──────────────────────────────────────────────
 
 function AnalyticsTab({ history, theme }) {
-  const chartData = history.map(b => ({
-    hour:     b.hour.slice(11) + ':00',
-    requests: b.requests,
-    free:     b.free,
-    paid:     b.paid,
-    tokens:   (b.tokens_in || 0) + (b.tokens_out || 0),
-    errors:   b.errors,
-  }));
+  const chartData = history.map(b => {
+    // Handle both old format (free/paid) and new MongoDB format (providers array)
+    let free = b.free || 0;
+    let paid = b.paid || 0;
+    if (b.providers && Array.isArray(b.providers)) {
+      free = b.providers.filter(p => p.provider?.startsWith('github-models')).reduce((s, p) => s + p.requests, 0);
+      paid = b.providers.filter(p => !p.provider?.startsWith('github-models')).reduce((s, p) => s + p.requests, 0);
+    }
+    return {
+      hour:     (b.hour || '').slice(11) + ':00',
+      requests: b.requests || 0,
+      free,
+      paid,
+      tokens:   (b.tokens_in || 0) + (b.tokens_out || 0),
+      errors:   b.errors || 0,
+    };
+  });
 
   const costData = history.map(b => ({
-    hour: b.hour.slice(11) + ':00',
-    cost: parseFloat(((b.paid || 0) * 0.000009).toFixed(4)),
+    hour: (b.hour || '').slice(11) + ':00',
+    cost: b.cost_usd != null ? parseFloat(b.cost_usd.toFixed(4)) : parseFloat(((b.paid || 0) * 0.000009).toFixed(4)),
   }));
 
   if (!history.length) {
@@ -562,26 +571,27 @@ function TopUsersTab({ topUsers, theme }) {
     <Paper sx={{ overflow: 'hidden' }}>
       <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
         <Typography variant="h6" fontWeight={600}>👤 Top Token Consumers</Typography>
-        <Typography variant="caption" color="text.secondary">Ranked by total tokens used · resets on server restart</Typography>
+        <Typography variant="caption" color="text.secondary">Ranked by total tokens used · persisted in MongoDB (survives deploys)</Typography>
       </Box>
       <TableContainer>
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: alpha(theme.palette.grey[500], 0.06) }}>
               <TableCell><strong>#</strong></TableCell>
-              <TableCell><strong>User ID</strong></TableCell>
+              <TableCell><strong>User</strong></TableCell>
               <TableCell align="right"><strong>Requests</strong></TableCell>
               <TableCell align="right"><strong>Total Tokens</strong></TableCell>
               <TableCell align="right"><strong>Tokens In</strong></TableCell>
               <TableCell align="right"><strong>Tokens Out</strong></TableCell>
               <TableCell align="right"><strong>Est. Cost</strong></TableCell>
+              <TableCell><strong>Services</strong></TableCell>
               <TableCell><strong>Usage</strong></TableCell>
-              <TableCell><strong>Last Seen</strong></TableCell>
+              <TableCell><strong>Last Active</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {topUsers.map((u, i) => {
-              const estimatedCost = ((u.tokens_in || 0) * 0 + (u.tokens_out || 0) * 0); // GH = free
+              const cost = u.cost_usd || 0;
               const pct = Math.round(((u.total_tokens || 0) / maxTokens) * 100);
               return (
                 <TableRow key={u.userId} sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) } }}>
@@ -592,9 +602,14 @@ function TopUsersTab({ topUsers, theme }) {
                   </TableCell>
                   <TableCell>
                     <Tooltip title={u.userId}>
-                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
-                        …{u.userId?.slice(-10)}
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>
+                          {u.name || `…${u.userId?.slice(-10)}`}
+                        </Typography>
+                        {u.email && (
+                          <Typography variant="caption" color="text.secondary">{u.email}</Typography>
+                        )}
+                      </Box>
                     </Tooltip>
                   </TableCell>
                   <TableCell align="right">{formatNumber(u.requests)}</TableCell>
@@ -602,9 +617,17 @@ function TopUsersTab({ topUsers, theme }) {
                   <TableCell align="right">{formatNumber(u.tokens_in || 0)}</TableCell>
                   <TableCell align="right">{formatNumber(u.tokens_out || 0)}</TableCell>
                   <TableCell align="right">
-                    <Typography variant="body2" color={estimatedCost > 0 ? 'warning.main' : 'success.main'}>
-                      {estimatedCost > 0 ? `$${estimatedCost.toFixed(4)}` : '🟢 Free'}
+                    <Typography variant="body2" color={cost > 0 ? 'warning.main' : 'success.main'}>
+                      {cost > 0 ? `$${cost.toFixed(4)}` : '🟢 Free'}
                     </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {(u.services_used || []).slice(0, 3).map(s => (
+                      <Chip key={s} label={s} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: 10 }} />
+                    ))}
+                    {(u.services_used || []).length > 3 && (
+                      <Chip label={`+${u.services_used.length - 3}`} size="small" sx={{ fontSize: 10 }} />
+                    )}
                   </TableCell>
                   <TableCell sx={{ minWidth: 120 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -617,8 +640,8 @@ function TopUsersTab({ topUsers, theme }) {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    {u.lastSeen
-                      ? <Tooltip title={new Date(u.lastSeen).toLocaleString()}><Typography variant="caption">{_timeAgo(u.lastSeen)}</Typography></Tooltip>
+                    {(u.last_active || u.lastSeen)
+                      ? <Tooltip title={new Date(u.last_active || u.lastSeen).toLocaleString()}><Typography variant="caption">{_timeAgo(u.last_active || u.lastSeen)}</Typography></Tooltip>
                       : <Typography variant="caption" color="text.disabled">—</Typography>
                     }
                   </TableCell>
@@ -1154,11 +1177,17 @@ export default function LLMManagement() {
   const [overrideProvider, setOverrideProvider] = useState('');
   const [overrideModel,    setOverrideModel]    = useState('');
 
+  // Storage + cleanup
+  const [storageInfo,      setStorageInfo]      = useState(null);
+  const [purgeDialogOpen,  setPurgeDialogOpen]  = useState(false);
+  const [purgeDays,        setPurgeDays]        = useState(30);
+  const [purging,          setPurging]          = useState(false);
+
   // ── Data fetching ────────────────────────────────────────────
 
   const fetchMetrics = useCallback(async () => {
     try {
-      const [metricsRes, configRes, historyRes, topUsersRes, stoppedRes, disabledRes, overridesRes, budgetRes] = await Promise.all([
+      const [metricsRes, configRes, historyRes, topUsersRes, stoppedRes, disabledRes, overridesRes, budgetRes, storageRes] = await Promise.all([
         api.get('/admin/llm/metrics'),
         api.get('/admin/llm/config'),
         api.get('/admin/llm/history').catch(() => ({ data: { success: false } })),
@@ -1167,6 +1196,7 @@ export default function LLMManagement() {
         api.get('/admin/llm/disabled-providers').catch(() => ({ data: { success: false } })),
         api.get('/admin/llm/service-overrides').catch(() => ({ data: { success: false } })),
         api.get('/admin/llm/budget').catch(() => ({ data: { success: false } })),
+        api.get('/admin/llm/storage').catch(() => ({ data: { success: false } })),
       ]);
 
       if (metricsRes.data.success) {
@@ -1187,6 +1217,7 @@ export default function LLMManagement() {
         setBudget(budgetRes.data.budget);
         setEditBudget(budgetRes.data.budget);
       }
+      if (storageRes.data.success)   setStorageInfo(storageRes.data.storage);
     } catch (err) {
       console.error('Failed to fetch LLM metrics:', err);
     } finally {
@@ -1346,21 +1377,27 @@ export default function LLMManagement() {
     );
   }
 
-  const providers     = metrics?.providers || {};
-  const totalRequests = Object.values(providers).reduce((s, p) => s + p.requests, 0);
-  const totalTokens   = Object.values(providers).reduce((s, p) => s + p.total_tokens, 0);
-  const totalErrors   = Object.values(providers).reduce((s, p) => s + p.errors, 0);
+  // Prefer persisted MongoDB data; fall back to in-memory for real-time session
+  const persistedProviders = metrics?.persisted?.providers || {};
+  const inMemProviders     = metrics?.providers || {};
+  const hasPersisted       = Object.keys(persistedProviders).length > 0;
+  const providers          = hasPersisted ? persistedProviders : inMemProviders;
+  const totalRequests = Object.values(providers).reduce((s, p) => s + (p.requests || 0), 0);
+  const totalTokens   = Object.values(providers).reduce((s, p) => s + (p.total_tokens || (p.tokens_in || 0) + (p.tokens_out || 0)), 0);
+  const totalErrors   = Object.values(providers).reduce((s, p) => s + (p.errors || 0), 0);
   const freeRequests  = Object.entries(providers)
     .filter(([k]) => k.startsWith('github-models'))
-    .reduce((s, [, p]) => s + p.requests, 0);
+    .reduce((s, [, p]) => s + (p.requests || 0), 0);
   const paidRequests  = totalRequests - freeRequests;
 
-  const p95Values = Object.values(providers).filter(p => p.p95_latency_ms > 0).map(p => p.p95_latency_ms);
+  const p95Values = Object.values(inMemProviders).filter(p => p.p95_latency_ms > 0).map(p => p.p95_latency_ms);
   const avgP95    = p95Values.length
     ? Math.round(p95Values.reduce((a, b) => a + b, 0) / p95Values.length)
     : 0;
 
-  const totalCost = metrics?.totalCost_usd ?? 0;
+  const totalCost = hasPersisted
+    ? (metrics?.persisted?.totalCost_usd ?? 0)
+    : (metrics?.totalCost_usd ?? 0);
 
   // Budget alert thresholds
   const dailyBudgetPct   = budget.dailyLimitUsd   > 0 ? (totalCost / budget.dailyLimitUsd) * 100   : 0;
@@ -1368,15 +1405,83 @@ export default function LLMManagement() {
   const showCostAlert    = budget.dailyLimitUsd > 0 && dailyBudgetPct >= budget.alertThresholdPct;
   const showQuotaAlert   = ghQuotaPct >= (budget.quotaAlertPct || 80);
 
+  // Purge handler
+  const handlePurge = async () => {
+    setPurging(true);
+    try {
+      const res = await api.delete('/admin/llm/logs', { params: { olderThanDays: purgeDays } });
+      if (res.data.success) {
+        setPurgeDialogOpen(false);
+        fetchMetrics();
+      }
+    } catch (err) {
+      console.error('Purge failed:', err);
+    } finally {
+      setPurging(false);
+    }
+  };
+
   // ── Render ───────────────────────────────────────────────────
 
   return (
     <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
 
-      {/* ⚠️ In-memory Warning Banner */}
-      <Alert severity="info" icon={<InfoOutlined />} sx={{ mb: 2 }} onClose={() => {}}>
-        <strong>In-memory data:</strong> All metrics, logs, and service controls reset on server restart or deploy. They are not persisted to the database.
+      {/* 💾 Persistent Data Banner */}
+      <Alert
+        severity={storageInfo?.status === 'critical' ? 'error' : storageInfo?.status === 'warning' ? 'warning' : 'success'}
+        icon={<InfoOutlined />}
+        sx={{ mb: 2 }}
+        action={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {storageInfo && (
+              <Typography variant="caption" sx={{ whiteSpace: 'nowrap' }}>
+                {formatNumber(storageInfo.documents)} docs · {storageInfo.totalSizeMB} MB
+              </Typography>
+            )}
+            <Button size="small" color="inherit" onClick={() => setPurgeDialogOpen(true)}>Cleanup</Button>
+          </Box>
+        }
+      >
+        <strong>Persistent data (MongoDB):</strong> Metrics survive deploys. 90-day auto-cleanup + manual purge.
+        {hasPersisted ? ' ✅ Using persisted data.' : ' ⏳ Collecting — persisted data will appear after first LLM call.'}
       </Alert>
+
+      {/* Purge Dialog */}
+      <Dialog open={purgeDialogOpen} onClose={() => setPurgeDialogOpen(false)}>
+        <DialogTitle>🗑️ Cleanup LLM Logs</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Delete LLM call logs older than a specified number of days. This cannot be undone.
+          </Typography>
+          {storageInfo && (
+            <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.info.main, 0.08), borderRadius: 1 }}>
+              <Typography variant="body2">
+                📊 Current: <strong>{formatNumber(storageInfo.documents)}</strong> documents · <strong>{storageInfo.totalSizeMB} MB</strong>
+              </Typography>
+              {storageInfo.oldest && (
+                <Typography variant="caption" color="text.secondary">
+                  Oldest: {new Date(storageInfo.oldest).toLocaleDateString()} · Newest: {new Date(storageInfo.newest).toLocaleDateString()}
+                </Typography>
+              )}
+            </Box>
+          )}
+          <TextField
+            label="Delete logs older than (days)"
+            type="number"
+            value={purgeDays}
+            onChange={(e) => setPurgeDays(Math.max(1, parseInt(e.target.value) || 1))}
+            fullWidth
+            size="small"
+            inputProps={{ min: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPurgeDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handlePurge} color="error" variant="contained" disabled={purging}>
+            {purging ? 'Purging…' : `Delete logs older than ${purgeDays} days`}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Budget / Quota Alerts */}
       {showCostAlert && (
@@ -1457,7 +1562,7 @@ export default function LLMManagement() {
               { label: 'Free (GitHub)',  value: `${totalRequests ? Math.round(freeRequests / totalRequests * 100) : 0}%`, icon: <CheckCircle />, color: theme.palette.success.main, sub: `${formatNumber(freeRequests)} requests` },
               { label: 'Paid Fallback',  value: formatNumber(paidRequests),  icon: <Warning />, color: paidRequests > 0 ? theme.palette.error.main : theme.palette.success.main, sub: paidRequests === 0 ? 'No credit burn! 🎉' : 'Credits consumed' },
               { label: 'Errors',         value: totalErrors,                  icon: <Error />,   color: totalErrors > 0 ? theme.palette.error.main : theme.palette.text.secondary },
-              { label: 'Cost Today',     value: `$${totalCost.toFixed(4)}`,   icon: <AttachMoney />, color: totalCost > 1 ? theme.palette.error.main : theme.palette.success.main, sub: totalCost === 0 ? '🟢 $0.00 spent' : undefined },
+              { label: 'Total Cost',    value: `$${totalCost.toFixed(4)}`,   icon: <AttachMoney />, color: totalCost > 1 ? theme.palette.error.main : theme.palette.success.main, sub: totalCost === 0 ? '🟢 $0.00 spent' : hasPersisted ? 'Lifetime (persisted)' : 'This session' },
               { label: 'Avg P95 Latency',value: avgP95 ? `${avgP95}ms` : '—', icon: <AccessTime />, color: avgP95 > 3000 ? theme.palette.error.main : avgP95 > 1500 ? theme.palette.warning.main : theme.palette.success.main, sub: p95Values.length ? `across ${p95Values.length} providers` : 'No data yet' },
             ].map((kpi, i) => (
               <Grid size={{ xs: 6, sm: 4, md: 12 / 7 }} key={i}>
