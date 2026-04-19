@@ -7,6 +7,7 @@ import {
   Alert, Divider, Tabs, Tab, LinearProgress,
   CircularProgress, Stack, alpha, useTheme,
   TextField, InputAdornment, Switch, FormControlLabel,
+  Collapse, TablePagination,
 } from '@mui/material';
 import {
   SmartToy, Speed, Warning, CheckCircle, Error,
@@ -17,6 +18,7 @@ import {
   Search, AttachMoney, TrendingUp, AccessTime, Wifi, WifiOff,
   PauseCircle, PlayCircle, Block, PowerSettingsNew,
   Download, Tune, DeleteOutline, InfoOutlined,
+  KeyboardArrowDown, KeyboardArrowUp, FilterList,
 } from '@mui/icons-material';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -784,6 +786,337 @@ function RequestLogTab({ theme }) {
   );
 }
 
+// ── Drill Tab (persistent per-call log with filters) ──────────
+
+function DrillExpandableRow({ row, theme }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <TableRow
+        sx={{
+          bgcolor: row.error ? alpha(theme.palette.error.main, 0.04) : 'inherit',
+          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) },
+        }}
+      >
+        <TableCell sx={{ p: 0.5 }}>
+          <IconButton size="small" onClick={() => setOpen(!open)}>
+            {open ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
+          </IconButton>
+        </TableCell>
+        <TableCell>
+          <Tooltip title={row.createdAt ? new Date(row.createdAt).toLocaleString() : ''}>
+            <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
+              {row.createdAt ? _timeAgo(row.createdAt) : '—'}
+            </Typography>
+          </Tooltip>
+        </TableCell>
+        <TableCell>
+          <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
+            {SERVICE_META[row.service]?.label || row.service || '—'}
+          </Typography>
+        </TableCell>
+        <TableCell>
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Chip
+              label={row.provider || '—'}
+              size="small"
+              sx={{
+                fontSize: 10, height: 20,
+                bgcolor: row.provider?.includes('claude') ? alpha('#d97706', 0.15) :
+                         row.provider?.includes('grok') ? alpha('#6366f1', 0.15) :
+                         alpha('#10a37f', 0.15),
+                color: row.provider?.includes('claude') ? '#d97706' :
+                       row.provider?.includes('grok') ? '#6366f1' : '#10a37f',
+              }}
+            />
+            {row.model && <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, mt: 0.3 }}>{row.model}</Typography>}
+          </Box>
+        </TableCell>
+        <TableCell align="right"><Typography variant="caption">{row.tokensIn > 0 ? formatNumber(row.tokensIn) : '—'}</Typography></TableCell>
+        <TableCell align="right"><Typography variant="caption">{row.tokensOut > 0 ? formatNumber(row.tokensOut) : '—'}</Typography></TableCell>
+        <TableCell align="right">
+          <Typography variant="caption" fontWeight={600} sx={{ color: row.estimatedCostUSD > 0.01 ? 'warning.main' : row.estimatedCostUSD > 0 ? 'text.primary' : 'text.disabled' }}>
+            {row.estimatedCostUSD > 0 ? `$${row.estimatedCostUSD.toFixed(4)}` : 'Free'}
+          </Typography>
+        </TableCell>
+        <TableCell align="right">
+          <Typography variant="caption" sx={{ color: row.latencyMs > 3000 ? 'error.main' : row.latencyMs > 1500 ? 'warning.main' : 'inherit' }}>
+            {row.latencyMs > 0 ? `${row.latencyMs}ms` : '—'}
+          </Typography>
+        </TableCell>
+        <TableCell>
+          {row.error
+            ? <Tooltip title={row.error}><Chip label={row.error.length > 30 ? row.error.slice(0, 30) + '…' : row.error} size="small" color="error" variant="outlined" sx={{ fontSize: 10, maxWidth: 180 }} /></Tooltip>
+            : <Typography variant="caption" color="success.main">OK</Typography>
+          }
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell colSpan={9} sx={{ py: 0, borderBottom: open ? undefined : 'none' }}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ py: 1.5, px: 2, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>User ID</Typography>
+                  <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>{row.userId || '—'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>Timestamp</Typography>
+                  <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>{row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}</Typography>
+                </Grid>
+                {row.systemSnippet && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700}>System Prompt (snippet)</Typography>
+                    <Paper variant="outlined" sx={{ p: 1, mt: 0.5, bgcolor: alpha(theme.palette.info.main, 0.04) }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap' }}>{row.systemSnippet}</Typography>
+                    </Paper>
+                  </Grid>
+                )}
+                {row.userSnippet && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700}>User Message (snippet)</Typography>
+                    <Paper variant="outlined" sx={{ p: 1, mt: 0.5, bgcolor: alpha(theme.palette.warning.main, 0.04) }}>
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap' }}>{row.userSnippet}</Typography>
+                    </Paper>
+                  </Grid>
+                )}
+                {row.error && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700}>Full Error</Typography>
+                    <Paper variant="outlined" sx={{ p: 1, mt: 0.5, bgcolor: alpha(theme.palette.error.main, 0.04) }}>
+                      <Typography variant="caption" color="error" sx={{ fontFamily: 'monospace', fontSize: 11 }}>{row.error}</Typography>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
+  );
+}
+
+function DrillTab({ theme }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState({ totalCost: 0, totalTokensIn: 0, totalTokensOut: 0, totalCalls: 0, avgLatency: 0, errorCount: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, pages: 0 });
+
+  // Filters
+  const [provider, setProvider] = useState('');
+  const [service, setService] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [hasError, setHasError] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [order, setOrder] = useState('desc');
+
+  // Filter options from backend
+  const [filterOptions, setFilterOptions] = useState({ providers: [], services: [], models: [] });
+
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/llm/drill/providers');
+      if (res.data.success) setFilterOptions(res.data);
+    } catch (_) {}
+  }, []);
+
+  const fetchData = useCallback(async (pg = pagination.page) => {
+    setLoading(true);
+    try {
+      const params = { page: pg, limit: pagination.limit, sortBy, order };
+      if (provider) params.provider = provider;
+      if (service) params.service = service;
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo) params.dateTo = dateTo;
+      if (hasError) params.hasError = hasError;
+
+      const res = await api.get('/admin/llm/drill', { params });
+      if (res.data.success) {
+        setData(res.data.data);
+        setSummary(res.data.summary);
+        setPagination(res.data.pagination);
+      }
+    } catch (_) {}
+    finally { setLoading(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, service, dateFrom, dateTo, hasError, sortBy, order, pagination.limit]);
+
+  useEffect(() => { fetchFilterOptions(); }, [fetchFilterOptions]);
+  useEffect(() => { fetchData(1); }, [fetchData]);
+
+  const handlePageChange = (_, newPage) => fetchData(newPage + 1);
+  const handleRowsPerPageChange = (e) => {
+    setPagination(prev => ({ ...prev, limit: parseInt(e.target.value) }));
+  };
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setOrder(order === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy(field);
+      setOrder('desc');
+    }
+  };
+
+  const SortableHeader = ({ field, children }) => (
+    <TableCell
+      align={['tokensIn', 'tokensOut', 'estimatedCostUSD', 'latencyMs'].includes(field) ? 'right' : 'left'}
+      sx={{ cursor: 'pointer', userSelect: 'none', '&:hover': { color: 'primary.main' } }}
+      onClick={() => handleSort(field)}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: ['tokensIn', 'tokensOut', 'estimatedCostUSD', 'latencyMs'].includes(field) ? 'flex-end' : 'flex-start', gap: 0.5 }}>
+        <strong>{children}</strong>
+        {sortBy === field && (order === 'desc' ? <ArrowDownward sx={{ fontSize: 14 }} /> : <ArrowUpward sx={{ fontSize: 14 }} />)}
+      </Box>
+    </TableCell>
+  );
+
+  return (
+    <Box>
+      {/* Summary cards */}
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        {[
+          { label: 'Total Calls', value: formatNumber(summary.totalCalls), icon: <Token />, color: 'primary' },
+          { label: 'Total Cost', value: `$${summary.totalCost.toFixed(4)}`, icon: <AttachMoney />, color: 'warning' },
+          { label: 'Tokens In', value: formatNumber(summary.totalTokensIn), icon: <ArrowDownward />, color: 'info' },
+          { label: 'Tokens Out', value: formatNumber(summary.totalTokensOut), icon: <ArrowUpward />, color: 'success' },
+          { label: 'Avg Latency', value: `${summary.avgLatency}ms`, icon: <Speed />, color: 'secondary' },
+          { label: 'Errors', value: String(summary.errorCount), icon: <Error />, color: 'error' },
+        ].map(({ label, value, icon, color }) => (
+          <Grid item xs={6} sm={4} md={2} key={label}>
+            <Card variant="outlined" sx={{ borderLeft: 3, borderColor: `${color}.main` }}>
+              <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ color: `${color}.main`, display: 'flex' }}>{icon}</Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">{label}</Typography>
+                    <Typography variant="subtitle2" fontWeight={700}>{value}</Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Filters */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+          <FilterList fontSize="small" color="action" />
+          <Typography variant="subtitle2" fontWeight={700}>Filters</Typography>
+          <Typography variant="caption" color="text.secondary">(persisted data — survives server restarts)</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Provider</InputLabel>
+            <Select value={provider} label="Provider" onChange={e => setProvider(e.target.value)}>
+              <MenuItem value="">All Providers</MenuItem>
+              {filterOptions.providers.map(p => (
+                <MenuItem key={p} value={p}>{PROVIDER_META[p]?.label || p}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Service</InputLabel>
+            <Select value={service} label="Service" onChange={e => setService(e.target.value)}>
+              <MenuItem value="">All Services</MenuItem>
+              {filterOptions.services.map(s => (
+                <MenuItem key={s} value={s}>{SERVICE_META[s]?.label || s}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Status</InputLabel>
+            <Select value={hasError} label="Status" onChange={e => setHasError(e.target.value)}>
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="true">Errors Only</MenuItem>
+              <MenuItem value="false">Success Only</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            size="small" type="date" label="From"
+            InputLabelProps={{ shrink: true }}
+            value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            sx={{ width: 150 }}
+          />
+          <TextField
+            size="small" type="date" label="To"
+            InputLabelProps={{ shrink: true }}
+            value={dateTo} onChange={e => setDateTo(e.target.value)}
+            sx={{ width: 150 }}
+          />
+
+          <Button size="small" startIcon={<Refresh />} onClick={() => fetchData(1)} disabled={loading}>
+            Refresh
+          </Button>
+          <Button
+            size="small" variant="text" color="secondary"
+            onClick={() => { setProvider(''); setService(''); setDateFrom(''); setDateTo(''); setHasError(''); }}
+          >
+            Clear
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Data table */}
+      <Paper sx={{ overflow: 'hidden' }}>
+        <TableContainer sx={{ maxHeight: 600 }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: 40 }} />
+                <SortableHeader field="createdAt">Time</SortableHeader>
+                <TableCell><strong>Service</strong></TableCell>
+                <TableCell><strong>Provider / Model</strong></TableCell>
+                <SortableHeader field="tokensIn">Tok In</SortableHeader>
+                <SortableHeader field="tokensOut">Tok Out</SortableHeader>
+                <SortableHeader field="estimatedCostUSD">Cost</SortableHeader>
+                <SortableHeader field="latencyMs">Latency</SortableHeader>
+                <TableCell><strong>Status</strong></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
+                    <CircularProgress size={24} />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && data.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                    <Typography color="text.secondary">No call logs yet. Data will appear after LLM calls are made.</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && data.map((row) => (
+                <DrillExpandableRow key={row._id} row={row} theme={theme} />
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {pagination.total > 0 && (
+          <TablePagination
+            component="div"
+            count={pagination.total}
+            page={(pagination.page || 1) - 1}
+            onPageChange={handlePageChange}
+            rowsPerPage={pagination.limit}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            rowsPerPageOptions={[25, 50, 100]}
+          />
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────
 
 export default function LLMManagement() {
@@ -1109,6 +1442,7 @@ export default function LLMManagement() {
           <Tab icon={<TrendingUp />} iconPosition="start" label="Analytics"    sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab icon={<Person />}     iconPosition="start" label="Top Users"    sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab icon={<AccessTime />} iconPosition="start" label="Request Log"  sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<Search />}     iconPosition="start" label="Drill"        sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
       </Paper>
 
@@ -1360,6 +1694,9 @@ export default function LLMManagement() {
 
       {/* ═══════════════════ TAB 4: REQUEST LOG ═══════════════════ */}
       {activeTab === 4 && <RequestLogTab theme={theme} />}
+
+      {/* ═══════════════════ TAB 5: DRILL ═══════════════════════ */}
+      {activeTab === 5 && <DrillTab theme={theme} />}
 
       {/* ═══════════════════ CONFIG DIALOG ═══════════════════════ */}
       <Dialog open={configOpen} onClose={() => setConfigOpen(false)} maxWidth="sm" fullWidth>
