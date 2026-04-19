@@ -54,8 +54,12 @@ import {
   InputAdornment,
   LinearProgress,
   ButtonGroup,
+  Snackbar,
   useTheme
 } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   Email,
   Notifications,
@@ -498,6 +502,9 @@ const ContentCommunicationManagement = () => {
   
   // Local state management
   const [activeTab, setActiveTab] = useState(0);
+  const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', message: '' });
+  const showSnack = useCallback((message, severity = 'info') => setSnackbar({ open: true, severity, message }), []);
+  const closeSnack = () => setSnackbar(s => ({ ...s, open: false }));
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
   const [emailCampaignDialogOpen, setEmailCampaignDialogOpen] = useState(false);
   const [contentDialogOpen, setContentDialogOpen] = useState(false);
@@ -863,8 +870,10 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         actionUrl: 'https://www.soldikeeper.com/dashboard'
       });
       fetchNotifications(1); // Refresh the list
+      showSnack(newNotification.id ? 'Notification updated' : (newNotification.sendImmediately ? 'Notification sent' : 'Notification saved as draft'), 'success');
     } catch (error) {
       console.error('Failed to save notification:', error);
+      showSnack(error?.message || 'Failed to save notification', 'error');
     }
   };
 
@@ -889,8 +898,10 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         scheduledTime: null
       });
       fetchEmailCampaigns(1); // Refresh the list
+      showSnack(newEmailCampaign.id ? 'Campaign updated' : (newEmailCampaign.sendImmediately ? 'Campaign sent' : 'Campaign saved as draft'), 'success');
     } catch (error) {
       console.error('Failed to save email campaign:', error);
+      showSnack(error?.message || 'Failed to save campaign', 'error');
     }
   };
 
@@ -914,8 +925,10 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
         published: false
       });
       fetchHelpContent(1); // Refresh the list
+      showSnack(newHelpContent.id ? 'Content updated' : 'Content created', 'success');
     } catch (error) {
       console.error('Failed to save help content:', error);
+      showSnack(error?.message || 'Failed to save content', 'error');
     }
   };
 
@@ -938,8 +951,10 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
       try {
         await adminService.deleteNotification(notificationId);
         fetchNotifications(1); // Refresh list
+        showSnack('Notification deleted', 'success');
       } catch (error) {
         console.error('Failed to delete notification:', error);
+        showSnack(error?.message || 'Failed to delete notification', 'error');
       }
     }
   };
@@ -963,8 +978,10 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
       try {
         await adminService.deleteEmailCampaign(campaignId);
         fetchEmailCampaigns(1); // Refresh list
+        showSnack('Campaign deleted', 'success');
       } catch (error) {
         console.error('Failed to delete campaign:', error);
+        showSnack(error?.message || 'Failed to delete campaign', 'error');
       }
     }
   };
@@ -987,8 +1004,10 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
       try {
         await adminService.deleteHelpContent(contentId);
         fetchHelpContent(1); // Refresh list
+        showSnack('Content deleted', 'success');
       } catch (error) {
         console.error('Failed to delete content:', error);
+        showSnack(error?.message || 'Failed to delete content', 'error');
       }
     }
   };
@@ -1117,6 +1136,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
 
   // Tab Panel component
   return (
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -1127,7 +1147,7 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
           <Button
             variant="outlined"
             startIcon={<Analytics />}
-            onClick={() => console.log('View analytics')}
+            onClick={() => setActiveTab(5)}
           >
             Analytics
           </Button>
@@ -2489,10 +2509,24 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
             Build rich email content visually — add blocks, pick colours, preview live, then copy the HTML or save it as a reusable template.
           </Typography>
           <EmailPlayground
-            onSaveAsTemplate={({ name, html }) => {
-              // Inject into BUILT_IN_TEMPLATES at runtime is not trivial; for now just copy HTML
-              // Future: POST to backend template endpoint
-              console.log('Save template:', name, html);
+            onSaveAsTemplate={async ({ name, html }) => {
+              try {
+                if (typeof adminService.createEmailTemplate === 'function') {
+                  await adminService.createEmailTemplate({ name, html });
+                } else {
+                  await adminService.createHelpContent({
+                    title: name,
+                    content: html,
+                    type: 'email_template',
+                    category: 'templates',
+                    published: false
+                  });
+                }
+                showSnack(`Template "${name}" saved`, 'success');
+              } catch (err) {
+                console.error('Save template:', err);
+                showSnack(err?.message || 'Failed to save template', 'error');
+              }
             }}
           />
         </Box>
@@ -2672,6 +2706,16 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
                     onChange={(e) => setNewNotification({ ...newNotification, sendImmediately: e.target.checked })}
                   />
                 </Box>
+                {!newNotification.sendImmediately && (
+                  <Box sx={{ mt: 2 }}>
+                    <DateTimePicker
+                      label="Schedule for"
+                      value={newNotification.scheduledTime ? new Date(newNotification.scheduledTime) : null}
+                      onChange={(val) => setNewNotification({ ...newNotification, scheduledTime: val ? val.toISOString() : null })}
+                      slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                    />
+                  </Box>
+                )}
               </Card>
             </Grid>
           </Grid>
@@ -2852,6 +2896,16 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
                         onChange={(e) => setNewEmailCampaign({ ...newEmailCampaign, sendImmediately: e.target.checked })}
                       />
                     </Box>
+                    {!newEmailCampaign.sendImmediately && (
+                      <Box sx={{ mt: 2 }}>
+                        <DateTimePicker
+                          label="Schedule for"
+                          value={newEmailCampaign.scheduledTime ? new Date(newEmailCampaign.scheduledTime) : null}
+                          onChange={(val) => setNewEmailCampaign({ ...newEmailCampaign, scheduledTime: val ? val.toISOString() : null })}
+                          slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                        />
+                      </Box>
+                    )}
                   </Card>
                 </Grid>
               </Grid>
@@ -3193,7 +3247,20 @@ Yes! Our Family Plan covers up to 5 accounts and includes all Premium features.`
           onClick={() => setTemplateDialogOpen(true)}
         />
       </SpeedDial>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4500}
+        onClose={closeSnack}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={closeSnack} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
+    </LocalizationProvider>
   );
 };
 

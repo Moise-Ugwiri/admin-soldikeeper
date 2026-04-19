@@ -1516,8 +1516,58 @@ export const AdminProvider = ({ children }) => {
     deleteUser,
     updateTransaction,
     updateSystemSettings,
-    createBackup: async () => console.log('createBackup not implemented'),
-    restoreBackup: async () => console.log('restoreBackup not implemented'),
+    createBackup: async () => {
+      try {
+        const result = await adminService.createBackup();
+        return result;
+      } catch (err) {
+        console.error('createBackup error:', err);
+        throw err;
+      }
+    },
+    restoreBackup: async (backupId) => {
+      try {
+        const result = await adminService.restoreBackup(backupId);
+        return result;
+      } catch (err) {
+        console.error('restoreBackup error:', err);
+        throw err;
+      }
+    },
+    clearSystemCache: async () => {
+      try {
+        const result = await adminService.clearSystemCache();
+        return result;
+      } catch (err) {
+        console.error('clearSystemCache error:', err);
+        throw err;
+      }
+    },
+    optimizeDatabase: async () => {
+      try {
+        const result = await adminService.optimizeDatabase();
+        return result;
+      } catch (err) {
+        console.error('optimizeDatabase error:', err);
+        throw err;
+      }
+    },
+    getSystemLogs: async (page, limit, level) => {
+      try {
+        return await adminService.getSystemLogs(page, limit, level);
+      } catch (err) {
+        console.error('getSystemLogs error:', err);
+        throw err;
+      }
+    },
+    getBackups: async () => {
+      try {
+        return await adminService.getBackups();
+      } catch (err) {
+        console.error('getBackups error:', err);
+        throw err;
+      }
+    },
     exportData,
     refreshData,
     updateFilters,

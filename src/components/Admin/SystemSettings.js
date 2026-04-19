@@ -23,6 +23,12 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  CircularProgress,
   useTheme
 } from '@mui/material';
 import {
@@ -55,7 +61,11 @@ const SystemSettings = () => {
     fetchAdminStats,
     updateSystemSettings,
     createBackup,
-    restoreBackup
+    restoreBackup,
+    clearSystemCache,
+    optimizeDatabase,
+    getSystemLogs,
+    getBackups
   } = useAdminData();
 
   // Local state
@@ -105,6 +115,88 @@ const SystemSettings = () => {
     }
   });
   const [saveMessage, setSaveMessage] = useState('');
+  const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', message: '' });
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: null });
+  const [opLoading, setOpLoading] = useState({ cache: false, optimize: false, restore: false, logs: false });
+  const [logsDialog, setLogsDialog] = useState({ open: false, logs: [], loading: false });
+  const [backupsDialog, setBackupsDialog] = useState({ open: false, backups: [], loading: false });
+
+  const showSnack = (message, severity = 'info') => setSnackbar({ open: true, severity, message });
+  const closeSnack = () => setSnackbar(s => ({ ...s, open: false }));
+
+  const askConfirm = (title, message, onConfirm) => setConfirmDialog({ open: true, title, message, onConfirm });
+  const closeConfirm = () => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+
+  // Maintenance handlers
+  const handleClearCache = () => {
+    askConfirm('Clear System Cache', 'Clear in-memory caches on the server? Active users may notice a brief slowdown.', async () => {
+      closeConfirm();
+      setOpLoading(o => ({ ...o, cache: true }));
+      try {
+        const res = await clearSystemCache();
+        showSnack(res?.message || 'Cache cleared', 'success');
+      } catch (err) {
+        showSnack(err.message || 'Failed to clear cache', 'error');
+      } finally {
+        setOpLoading(o => ({ ...o, cache: false }));
+      }
+    });
+  };
+
+  const handleOptimizeDb = () => {
+    askConfirm('Optimize Database', 'Run database optimization scan now? This is a read-only inspection that gathers stats.', async () => {
+      closeConfirm();
+      setOpLoading(o => ({ ...o, optimize: true }));
+      try {
+        const res = await optimizeDatabase();
+        showSnack(res?.message || 'Database optimized', 'success');
+      } catch (err) {
+        showSnack(err.message || 'Failed to optimize', 'error');
+      } finally {
+        setOpLoading(o => ({ ...o, optimize: false }));
+      }
+    });
+  };
+
+  const handleViewLogs = async () => {
+    setLogsDialog({ open: true, logs: [], loading: true });
+    try {
+      const res = await getSystemLogs(1, 100, 'all');
+      const logs = res?.data?.logs || res?.logs || res?.data || [];
+      setLogsDialog({ open: true, logs: Array.isArray(logs) ? logs : [], loading: false });
+    } catch (err) {
+      setLogsDialog({ open: true, logs: [], loading: false });
+      showSnack(err.message || 'Failed to load logs', 'error');
+    }
+  };
+
+  const handleOpenRestore = async () => {
+    setBackupsDialog({ open: true, backups: [], loading: true });
+    try {
+      const res = await getBackups();
+      const list = res?.data?.backups || res?.data || res?.backups || [];
+      setBackupsDialog({ open: true, backups: Array.isArray(list) ? list : [], loading: false });
+    } catch (err) {
+      setBackupsDialog({ open: true, backups: [], loading: false });
+      showSnack(err.message || 'Failed to load backups', 'error');
+    }
+  };
+
+  const handleRestoreBackup = (backupId) => {
+    askConfirm('Restore Backup', `Restore from backup "${backupId}"? This is a destructive operation — the operator must complete the restore from infrastructure tooling.`, async () => {
+      closeConfirm();
+      setOpLoading(o => ({ ...o, restore: true }));
+      try {
+        const res = await restoreBackup(backupId);
+        showSnack(res?.message || 'Restore initiated', 'success');
+        setBackupsDialog(d => ({ ...d, open: false }));
+      } catch (err) {
+        showSnack(err.message || 'Failed to restore backup', 'error');
+      } finally {
+        setOpLoading(o => ({ ...o, restore: false }));
+      }
+    });
+  };
 
   // Load settings and stats on component mount
   useEffect(() => {
@@ -160,13 +252,10 @@ const SystemSettings = () => {
     try {
       if (updateSystemSettings) {
         await updateSystemSettings(settings);
-        setSaveMessage('Settings saved successfully!');
-        setTimeout(() => setSaveMessage(''), 3000);
+        showSnack('Settings saved successfully', 'success');
       }
     } catch (error) {
-      console.error('Failed to save settings:', error);
-      setSaveMessage('Error saving settings');
-      setTimeout(() => setSaveMessage(''), 3000);
+      showSnack(error?.message || 'Error saving settings', 'error');
     }
   };
 
@@ -174,12 +263,11 @@ const SystemSettings = () => {
   const handleCreateBackup = async () => {
     try {
       if (createBackup) {
-        await createBackup();
-        setSaveMessage('Backup created successfully!');
-        setTimeout(() => setSaveMessage(''), 3000);
+        const res = await createBackup();
+        showSnack(res?.message || 'Backup created successfully', 'success');
       }
     } catch (error) {
-      console.error('Failed to create backup:', error);
+      showSnack(error?.message || 'Failed to create backup', 'error');
     }
   };
 
@@ -198,17 +286,6 @@ const SystemSettings = () => {
 
   return (
     <Box>
-      {/* Authentication Debug Info */}
-      <Alert severity="info" sx={{ mb: 2 }}>
-        <Typography variant="body2">
-          <strong>Authentication Status:</strong><br/>
-          User: {user ? `${user.email} (${user.role})` : 'Not logged in'}<br/>
-          Token in localStorage: {localStorage.getItem('token') ? 'Present' : 'Missing'}<br/>
-          Error: {error || 'None'}<br/>
-          Loading: {loading ? 'true' : 'false'}
-        </Typography>
-      </Alert>
-
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" fontWeight="bold">
@@ -604,7 +681,7 @@ const SystemSettings = () => {
                   <Button variant="contained" onClick={handleCreateBackup}>
                     Create Backup
                   </Button>
-                  <Button variant="outlined">
+                  <Button variant="outlined" onClick={handleOpenRestore}>
                     Restore Backup
                   </Button>
                 </Box>
@@ -669,13 +746,23 @@ const SystemSettings = () => {
                   Maintenance Actions
                 </Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Button variant="outlined">
+                  <Button
+                    variant="outlined"
+                    onClick={handleClearCache}
+                    disabled={opLoading.cache}
+                    startIcon={opLoading.cache ? <CircularProgress size={16} /> : null}
+                  >
                     Clear Cache
                   </Button>
-                  <Button variant="outlined">
+                  <Button
+                    variant="outlined"
+                    onClick={handleOptimizeDb}
+                    disabled={opLoading.optimize}
+                    startIcon={opLoading.optimize ? <CircularProgress size={16} /> : null}
+                  >
                     Optimize Database
                   </Button>
-                  <Button variant="outlined">
+                  <Button variant="outlined" onClick={handleViewLogs}>
                     View System Logs
                   </Button>
                 </Box>
@@ -684,6 +771,100 @@ const SystemSettings = () => {
           </Grid>
         </TabPanel>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialog.open} onClose={closeConfirm}>
+        <DialogTitle>{confirmDialog.title}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">{confirmDialog.message}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeConfirm}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => confirmDialog.onConfirm && confirmDialog.onConfirm()}
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* System Logs Dialog */}
+      <Dialog open={logsDialog.open} onClose={() => setLogsDialog(d => ({ ...d, open: false }))} maxWidth="md" fullWidth>
+        <DialogTitle>System Logs</DialogTitle>
+        <DialogContent dividers>
+          {logsDialog.loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+          ) : logsDialog.logs.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">No logs available.</Typography>
+          ) : (
+            <Box sx={{ maxHeight: 480, overflow: 'auto', fontFamily: 'monospace', fontSize: 12 }}>
+              {logsDialog.logs.map((log, idx) => (
+                <Box key={idx} sx={{ py: 0.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <Typography component="span" variant="caption" color={log.level === 'error' ? 'error' : 'text.secondary'}>
+                    [{log.timestamp || log.createdAt || ''}] {(log.level || 'info').toUpperCase()}:
+                  </Typography>{' '}
+                  <Typography component="span" variant="body2">
+                    {log.message || log.action || JSON.stringify(log)}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLogsDialog(d => ({ ...d, open: false }))}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Backups Dialog */}
+      <Dialog open={backupsDialog.open} onClose={() => setBackupsDialog(d => ({ ...d, open: false }))} maxWidth="sm" fullWidth>
+        <DialogTitle>Restore from Backup</DialogTitle>
+        <DialogContent dividers>
+          {backupsDialog.loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+          ) : backupsDialog.backups.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">No backups available.</Typography>
+          ) : (
+            <List>
+              {backupsDialog.backups.map((b) => (
+                <ListItem key={b.id || b._id || b.name} divider>
+                  <ListItemText
+                    primary={b.name || b.id || b._id}
+                    secondary={`${b.createdAt || b.timestamp || ''}${b.size ? ` · ${b.size}` : ''}`}
+                  />
+                  <ListItemSecondaryAction>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => handleRestoreBackup(b.id || b._id || b.name)}
+                      disabled={opLoading.restore}
+                    >
+                      Restore
+                    </Button>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBackupsDialog(d => ({ ...d, open: false }))}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4500}
+        onClose={closeSnack}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={closeSnack} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

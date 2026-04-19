@@ -692,6 +692,15 @@ class AdminService {
     }
   }
 
+  async clearSystemCache() {
+    try {
+      const response = await apiClient.post('/admin/system/cache/clear');
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to clear cache');
+    }
+  }
+
   async cleanupOldData(days = 30) {
     try {
       const response = await apiClient.post('/admin/database/cleanup', { days });
