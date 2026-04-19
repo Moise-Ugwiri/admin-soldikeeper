@@ -69,7 +69,8 @@ const OrbitalFleet = React.memo(function OrbitalFleet({ height = 460 }) {
     const load = async () => {
       try {
         const res = await apiClient.get('/admin/agent-management/fleet-status');
-        if (!cancelled) setFleet(res.data?.agents || []);
+        const payload = res.data?.data || res.data || {};
+        if (!cancelled) setFleet(payload.agents || []);
       } catch {/* keep static fallback */}
     };
     load();

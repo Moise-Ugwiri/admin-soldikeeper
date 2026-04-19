@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { exportToCSV, exportToExcel } from '../../utils/exportUtils';
 import { downloadReport } from '../../utils/pdfReportGenerator';
 import websocketService from '../../services/websocketService';
+import apiClient from '../../services/api';
 import { AIAgentWidget } from './AIAgent';
 
 import MissionStrip from './Overview/MissionStrip';
@@ -70,17 +71,42 @@ const AdminOverview = () => {
   const totalIncome      = adminStats?.totalUserIncome || adminStats?.totalRevenue || 0;
   const activeNow        = realtimeData?.activeSessions ?? adminStats?.activeUsers ?? 0;
   const newUsersPeriod   = adminStats?.newUsers ?? 0;
-  const signupsToday     = adminStats?.signupsToday ?? adminStats?.newUsers ?? 0;
-  const conversion       = adminStats?.conversionRate
-    ?? (adminStats?.proUsers && totalUsers ? (adminStats.proUsers / totalUsers) * 100 : 0);
+  const conversion       = (() => {
+    if (typeof adminStats?.conversionRate === 'number') return adminStats.conversionRate;
+    if (typeof adminStats?.conversionRate === 'string') return parseFloat(adminStats.conversionRate) || 0;
+    if (adminStats?.premiumUsers && totalUsers > 0) return (adminStats.premiumUsers / totalUsers) * 100;
+    return 0;
+  })();
   const perfPct          = realtimeData?.performance ?? 95;
   const storagePct       = realtimeData?.storageUsage ?? 68;
   const memoryPct        = realtimeData?.memoryUsage ?? 45;
   const networkPct       = realtimeData?.networkHealth ?? 98;
-  const uptimePct        = realtimeData?.uptime ?? 99.9;
+  const uptimePct        = realtimeData?.serverUptime ?? realtimeData?.uptime ?? 99.9;
   const escalationsCount = escalationStats?.pending ?? 0;
   const alertsCount      = securityAlerts?.length || 0;
-  const fleetActive      = realtimeData?.fleetActive ?? 0;
+
+  // Live fleet summary (from backend)
+  const [fleetSummary, setFleetSummary] = useState({ active: 0, total: 18 });
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await apiClient.get('/admin/agent-management/fleet-status');
+        const payload = res.data?.data || res.data || {};
+        if (!cancelled && payload.summary) {
+          setFleetSummary({
+            active: payload.summary.activeNow || 0,
+            total: payload.summary.totalAgents || (payload.agents?.length ?? 18),
+          });
+        }
+      } catch {/* keep defaults */}
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+  const fleetActive = fleetSummary.active;
+  const fleetTotal  = fleetSummary.total;
 
   const operatorName = useMemo(() => {
     const n = user?.name || user?.firstName || user?.email || '';
@@ -193,7 +219,7 @@ const AdminOverview = () => {
       <MissionStrip
         systemHealth={systemHealth}
         fleetActive={fleetActive}
-        fleetTotal={18}
+        fleetTotal={fleetTotal}
         alertsCount={alertsCount}
         escalationsCount={escalationsCount}
         uptimePct={uptimePct}
@@ -226,7 +252,7 @@ const AdminOverview = () => {
           totalIncome={totalIncome}
           activeNow={activeNow}
           fleetActive={fleetActive}
-          fleetTotal={18}
+          fleetTotal={fleetTotal}
           alertsCount={alertsCount}
           escalationsCount={escalationsCount}
         />
@@ -241,7 +267,7 @@ const AdminOverview = () => {
           txGrowth={typeof adminStats?.transactionGrowth === 'number' ? adminStats.transactionGrowth : null}
           totalIncome={totalIncome}
           activeNow={activeNow}
-          signupsToday={signupsToday}
+          signupsToday={newUsersPeriod}
           conversion={conversion}
         />
       </Box>

@@ -44,7 +44,8 @@ const NowPlaying = React.memo(function NowPlaying({ height = 380 }) {
     const load = async () => {
       try {
         const res = await apiClient.get('/admin/agent-management/fleet-status');
-        if (!cancelled) setFleet(res.data?.agents || []);
+        const payload = res.data?.data || res.data || {};
+        if (!cancelled) setFleet(payload.agents || []);
       } catch {/* fallback to static */}
       finally { if (!cancelled) setLoading(false); }
     };

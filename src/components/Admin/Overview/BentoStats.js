@@ -232,7 +232,7 @@ const BentoStats = React.memo(function BentoStats({
         ...card,
         gridColumn: { xs: 'span 1', md: 'span 1' },
       }}>
-        <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.6, opacity: 0.7 }}>SIGNUPS · TODAY</Typography>
+        <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.6, opacity: 0.7 }}>NEW USERS · MONTH</Typography>
         <Typography sx={{ fontSize: 30, fontWeight: 900, fontFamily: 'ui-monospace, monospace', color: COL.signup, mt: 0.5 }}>
           {fmt(signupsToday)}
         </Typography>
