@@ -126,6 +126,12 @@ class WebSocketService {
         this.emit('admin:realtime', data);
       });
 
+      // ── God Mode cross-surface sync ──
+      // Re-emitted to internal listeners; consumed by GodModePanel + AI tab
+      this.socket.on('godmode:state-changed', (data) => {
+        this.emit('godmode:state-changed', data);
+      });
+
     } catch (error) {
       console.error('Error creating Socket.io connection:', error);
       this.emit('error', { 

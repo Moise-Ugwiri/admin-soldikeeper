@@ -442,22 +442,49 @@ function KGPanel() {
 // ───────────── ROOT ─────────────
 export default function GodModePanel() {
   const [tab, setTab] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [lastEvent, setLastEvent] = useState(null);
   const subId = SUBTABS[tab].id;
+
+  // ── Cross-surface bridge: refresh + show banner when state changes via Telegram or another admin ──
+  useEffect(() => {
+    let unsubscribe = null;
+    let active = true;
+    (async () => {
+      try {
+        const ws = (await import('../../../services/websocketService')).default;
+        unsubscribe = ws.on('godmode:state-changed', (data) => {
+          if (!active) return;
+          setLastEvent(data);
+          setRefreshKey(k => k + 1);
+          // Auto-clear banner after 8s
+          setTimeout(() => { if (active) setLastEvent(null); }, 8000);
+        });
+      } catch (e) { /* ws optional */ }
+    })();
+    return () => { active = false; if (unsubscribe) unsubscribe(); };
+  }, []);
+
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h4" gutterBottom>🛡️ God Mode — AI Corp Control</Typography>
+      {lastEvent && (
+        <Alert severity="info" sx={{ mb: 2 }} onClose={() => setLastEvent(null)}>
+          🔔 <b>{lastEvent.event}</b> — by <code>{lastEvent.payload?.adminName || 'admin'}</code> via {lastEvent.source} · {new Date(lastEvent.at).toLocaleTimeString()}
+        </Alert>
+      )}
       <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" sx={{ mb: 2 }}>
         {SUBTABS.map(t => <Tab key={t.id} label={t.label} />)}
       </Tabs>
-      {subId === 'overview' && <OverviewPanel />}
-      {subId === 'goals' && <GoalsPanel />}
-      {subId === 'scorecards' && <ScorecardsPanel />}
-      {subId === 'rules' && <RulesPanel />}
-      {subId === 'votes' && <VotesPanel />}
-      {subId === 'proposals' && <ProposalsPanel />}
-      {subId === 'agents' && <AgentsPanel />}
-      {subId === 'investor' && <InvestorPanel />}
-      {subId === 'kg' && <KGPanel />}
+      {subId === 'overview' && <OverviewPanel key={`ov-${refreshKey}`} />}
+      {subId === 'goals' && <GoalsPanel key={`g-${refreshKey}`} />}
+      {subId === 'scorecards' && <ScorecardsPanel key={`s-${refreshKey}`} />}
+      {subId === 'rules' && <RulesPanel key={`r-${refreshKey}`} />}
+      {subId === 'votes' && <VotesPanel key={`v-${refreshKey}`} />}
+      {subId === 'proposals' && <ProposalsPanel key={`p-${refreshKey}`} />}
+      {subId === 'agents' && <AgentsPanel key={`a-${refreshKey}`} />}
+      {subId === 'investor' && <InvestorPanel key={`i-${refreshKey}`} />}
+      {subId === 'kg' && <KGPanel key={`k-${refreshKey}`} />}
     </Box>
   );
 }
