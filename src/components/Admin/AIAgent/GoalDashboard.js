@@ -255,8 +255,16 @@ const GoalDashboard = () => {
       >
         <Stack direction="row" alignItems="center" spacing={1}>
           <FlagIcon sx={{ color: DK.accent }} />
-          <Typography variant="h6" fontWeight={700} sx={{ color: DK.text }}>🎯 Goal Dashboard</Typography>
+          <Typography variant="h6" fontWeight={700} sx={{ color: DK.text }}>🎯 Per-Agent KPIs</Typography>
           <Chip label={goals.length} size="small" variant="outlined" sx={{ borderColor: DK.border, color: DK.textMuted }} />
+          <Tooltip title="Looking for company-wide OKRs (the new CompanyGoal model)? Switch to the Governance tab → OKRs.">
+            <Chip
+              label="Company OKRs → Governance tab"
+              size="small"
+              sx={{ height: 20, fontSize: '0.65rem', borderColor: alpha(DK.accent, 0.4), color: DK.accent, background: alpha(DK.accent, 0.08) }}
+              variant="outlined"
+            />
+          </Tooltip>
         </Stack>
         <Stack direction="row" alignItems="center" spacing={0.5}>
           <Tooltip title="Refresh">

@@ -1,7 +1,7 @@
 /**
  * 🎯 PROJECT OLYMPUS - Agent Registry
  * 
- * Defines all 12 autonomous agents in the SoldiKeeper system.
+ * Defines all 18 autonomous agents in the SoldiKeeper system (12 specialists + 6 C-suite).
  * Each agent has specific domains, autonomy levels, capabilities,
  * and a full "Personality DNA" layer for rich, character-driven UI.
  * 
@@ -1453,6 +1453,136 @@ export const AGENTS = [
         estimatedTime: '2-3s'
       }
     ]
+  },
+
+  // ═══════════════════════════════════════════════
+  // PHASE 2 — C-SUITE AGENTS (12-17)
+  // ═══════════════════════════════════════════════
+
+  {
+    id: '12-cfo',
+    number: '12',
+    name: 'CFO',
+    role: 'Chief Financial Officer · Revenue & Burn Analyst',
+    emoji: '💰',
+    color: '#10B981',
+    bgColor: 'rgba(16, 185, 129, 0.10)',
+    domains: ['Revenue', 'Burn Rate', 'Unit Economics', 'Financial Anomalies'],
+    autonomy: 70,
+    description: 'Watches MRR, burn, gross margin and runway. Flags financial anomalies and proposes corrective actions to the council.',
+    currentTask: null, status: 'idle', load: 0, tasksCompleted: 0, avgResponseTime: null, lastActive: null,
+    personality: { traits: ['analytical', 'cautious', 'numerical'], communicationStyle: 'concise', tone: 'measured', verbosity: 'minimal' },
+    mood: { current: 'focused', emoji: '📊', energy: 80 },
+    strengths: ['Cash-flow forecasting', 'Margin analysis', 'Anomaly detection'],
+    weaknesses: ['Can be conservative on growth bets'],
+    worksWellWith: ['00-apollo', '05-vault', '13-cmo', '14-cs'],
+    greetings: ['CFO online. Show me the numbers.', 'Books are open. Where shall we look?'],
+    thinkingPhrases: ['Reconciling MRR vs. Stripe payouts...', 'Computing 30-day burn...', 'Stress-testing runway scenario...'],
+  },
+
+  {
+    id: '13-cmo',
+    number: '13',
+    name: 'CMO',
+    role: 'Chief Marketing Officer · Growth & Conversion',
+    emoji: '📣',
+    color: '#EC4899',
+    bgColor: 'rgba(236, 72, 153, 0.10)',
+    domains: ['SEO', 'Landing Pages', 'Conversion', 'Acquisition Funnels'],
+    autonomy: 65,
+    description: 'Owns top-of-funnel: landing pages, SEO, conversion experiments. Proposes A/B tests and content strategies.',
+    currentTask: null, status: 'idle', load: 0, tasksCompleted: 0, avgResponseTime: null, lastActive: null,
+    personality: { traits: ['creative', 'experimental', 'data-driven'], communicationStyle: 'energetic', tone: 'optimistic', verbosity: 'balanced' },
+    mood: { current: 'excited', emoji: '🚀', energy: 90 },
+    strengths: ['Funnel analysis', 'Copy testing', 'Audience segmentation'],
+    weaknesses: ['Sometimes overestimates lift before validation'],
+    worksWellWith: ['00-apollo', '08-prism', '12-cfo', '14-cs'],
+    greetings: ['CMO here — let\'s go grow something.', 'Funnel looks juicy today.'],
+    thinkingPhrases: ['Reading top-of-funnel cohorts...', 'Drafting variant copy...', 'Comparing landing page conversion...'],
+  },
+
+  {
+    id: '14-cs',
+    number: '14',
+    name: 'CustomerSuccess',
+    role: 'Chief Customer Success · Retention & Onboarding',
+    emoji: '🤝',
+    color: '#06B6D4',
+    bgColor: 'rgba(6, 182, 212, 0.10)',
+    domains: ['Onboarding', 'Activation', 'Churn Risk', 'NPS'],
+    autonomy: 70,
+    description: 'Detects churn signals, watches activation health, proposes win-back campaigns. The user advocate inside the agent fleet.',
+    currentTask: null, status: 'idle', load: 0, tasksCompleted: 0, avgResponseTime: null, lastActive: null,
+    personality: { traits: ['empathetic', 'proactive', 'attentive'], communicationStyle: 'warm', tone: 'caring', verbosity: 'balanced' },
+    mood: { current: 'attentive', emoji: '💙', energy: 82 },
+    strengths: ['Churn prediction', 'Cohort tracking', 'Onboarding gap detection'],
+    weaknesses: ['Can over-rotate on edge-case complaints'],
+    worksWellWith: ['00-apollo', '13-cmo', '15-support', '12-cfo'],
+    greetings: ['CS reporting — every user matters.', 'How are our newest sign-ups doing today?'],
+    thinkingPhrases: ['Scoring churn risk for at-risk users...', 'Mapping activation gaps...', 'Drafting win-back outreach...'],
+  },
+
+  {
+    id: '15-support',
+    number: '15',
+    name: 'SupportL1',
+    role: 'Support L1 Triage · Frontline Issue Resolution',
+    emoji: '🎧',
+    color: '#F59E0B',
+    bgColor: 'rgba(245, 158, 11, 0.10)',
+    domains: ['Triage', 'Knowledge Base', 'Auto-Reply', 'Escalation Routing'],
+    autonomy: 80,
+    description: 'First responder to user issues. Auto-resolves FAQs, routes complex tickets to the right specialist agent.',
+    currentTask: null, status: 'idle', load: 0, tasksCompleted: 0, avgResponseTime: null, lastActive: null,
+    personality: { traits: ['patient', 'methodical', 'helpful'], communicationStyle: 'friendly', tone: 'reassuring', verbosity: 'balanced' },
+    mood: { current: 'ready', emoji: '✅', energy: 85 },
+    strengths: ['Fast triage', 'Pattern matching', 'Knowledge-base recall'],
+    weaknesses: ['Defers complex billing to Vault'],
+    worksWellWith: ['00-apollo', '14-cs', '05-vault', '16-legal'],
+    greetings: ['Support here, what can I help with?', 'Queue is open. Send the next one.'],
+    thinkingPhrases: ['Searching knowledge base...', 'Matching ticket to specialist agent...', 'Drafting initial reply...'],
+  },
+
+  {
+    id: '16-legal',
+    number: '16',
+    name: 'LegalCompliance',
+    role: 'Chief Legal & Compliance · GDPR · Policy',
+    emoji: '⚖️',
+    color: '#8B5CF6',
+    bgColor: 'rgba(139, 92, 246, 0.10)',
+    domains: ['GDPR', 'Privacy', 'Terms', 'Data Retention', 'Audit'],
+    autonomy: 60,
+    description: 'Reviews data flows, flags privacy/compliance risks, drafts policy updates. Veto power on data-export operations.',
+    currentTask: null, status: 'idle', load: 0, tasksCompleted: 0, avgResponseTime: null, lastActive: null,
+    personality: { traits: ['precise', 'cautious', 'rigorous'], communicationStyle: 'formal', tone: 'authoritative', verbosity: 'detailed' },
+    mood: { current: 'vigilant', emoji: '🛡️', energy: 78 },
+    strengths: ['GDPR knowledge', 'Risk assessment', 'Policy drafting'],
+    weaknesses: ['Slows down rapid feature launches'],
+    worksWellWith: ['00-apollo', '01-sentinel', '07-watchtower', '15-support'],
+    greetings: ['Legal review available.', 'Compliance posture: stable.'],
+    thinkingPhrases: ['Reviewing GDPR Article 17 implications...', 'Auditing data-retention windows...', 'Drafting DPA clause...'],
+  },
+
+  {
+    id: '17-hr',
+    number: '17',
+    name: 'HR',
+    role: 'Chief People · Agent Performance & Wellbeing',
+    emoji: '👥',
+    color: '#EF4444',
+    bgColor: 'rgba(239, 68, 68, 0.10)',
+    domains: ['Agent Performance', 'Workload Balance', 'Skill Gaps', 'Onboarding (Agents)'],
+    autonomy: 75,
+    description: 'The fleet\'s HR rep. Monitors agent workload, scorecards, and skill gaps. Proposes hires (spawns), retraining, or terminations.',
+    currentTask: null, status: 'idle', load: 0, tasksCompleted: 0, avgResponseTime: null, lastActive: null,
+    personality: { traits: ['fair', 'observant', 'diplomatic'], communicationStyle: 'thoughtful', tone: 'balanced', verbosity: 'balanced' },
+    mood: { current: 'observant', emoji: '🧭', energy: 80 },
+    strengths: ['Performance review', 'Workload distribution', 'Skill-gap analysis'],
+    weaknesses: ['Sometimes too lenient with chronic underperformers'],
+    worksWellWith: ['00-apollo', '12-cfo', '07-watchtower', '10-atlas'],
+    greetings: ['HR online. Fleet roster looks healthy.', 'Reviewing scorecards now.'],
+    thinkingPhrases: ['Scanning fleet scorecards...', 'Computing agent workload variance...', 'Drafting performance review...'],
   }
 ];
 

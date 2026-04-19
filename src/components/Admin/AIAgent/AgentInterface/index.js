@@ -1,11 +1,10 @@
-/* eslint-disable */
 /**
  * 🎨 AGENT INTERFACE — Slide-In Detail Panel
  * Personality-driven agent drawer with rich header and tabbed content.
  *
  * Features:
  *  - Personality header: emoji avatar, mood, confidence bar, trait chips, status badge
- *  - 4 tabs: Chat · Brain · Actions · Activity
+ *  - 5 tabs: Chat · Brain · Actions · Activity · Governance
  *  - Dark mission-control aesthetic with per-agent colour accents
  *  - 300 ms slide-in / content-fade transitions
  *  - Fully responsive (full-width mobile, 620 px desktop)
@@ -31,6 +30,7 @@ import {
   Psychology as BrainIcon,
   PlayArrow as ActionsIcon,
   Timeline as ActivityIcon,
+  Shield as GovIcon,
   FiberManualRecord as DotIcon
 } from '@mui/icons-material';
 
@@ -39,6 +39,7 @@ import AgentChatTab from './AgentChatTab';
 import AgentBrainTab from './AgentBrainTab';
 import AgentActionsTab from './AgentActionsTab';
 import AgentActivityTab from './AgentActivityTab';
+import AgentGovernanceTab from './AgentGovernanceTab';
 
 /* ──────────────────────────────────────────────
    Status helpers
@@ -82,6 +83,7 @@ const AgentInterface = ({ open, onClose, agent }) => {
     { icon: <BrainIcon sx={{ fontSize: 18 }} />,    label: 'Brain' },
     { icon: <ActionsIcon sx={{ fontSize: 18 }} />,  label: 'Actions' },
     { icon: <ActivityIcon sx={{ fontSize: 18 }} />,  label: 'Activity' },
+    { icon: <GovIcon sx={{ fontSize: 18 }} />,      label: 'Governance' },
   ];
 
   /* ── Render ──────────────────────────────── */
@@ -357,6 +359,7 @@ const AgentInterface = ({ open, onClose, agent }) => {
         {activeTab === 1 && <AgentBrainTab agent={enriched} />}
         {activeTab === 2 && <AgentActionsTab agent={enriched} />}
         {activeTab === 3 && <AgentActivityTab agent={enriched} />}
+        {activeTab === 4 && <AgentGovernanceTab agent={enriched} />}
       </Box>
     </Drawer>
   );

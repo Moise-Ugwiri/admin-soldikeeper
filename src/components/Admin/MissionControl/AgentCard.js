@@ -552,6 +552,29 @@ const AgentCard = ({ agent, onClick, compact = false }) => {
                 </Typography>
               </Box>
             </Tooltip>
+
+            {/* LLM cost burned today (Sonnet/Haiku). Always shown; dash when unknown. */}
+            <Tooltip title={
+              agent.costToday != null
+                ? `LLM cost burned today: $${Number(agent.costToday).toFixed(4)} across ${agent.llmCallsToday || 0} call(s)`
+                : 'No LLM cost data yet today'
+            } arrow>
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <Typography sx={{ fontSize: '0.65rem' }}>💸</Typography>
+                <Typography variant="caption" sx={{
+                  fontSize: '0.7rem', fontWeight: 700,
+                  color: agent.costToday > 0.5
+                    ? '#ef4444'
+                    : agent.costToday > 0.1
+                      ? '#f59e0b'
+                      : agent.costToday > 0
+                        ? '#10b981'
+                        : 'text.disabled',
+                }}>
+                  {agent.costToday > 0 ? `$${Number(agent.costToday).toFixed(2)}` : '—'}
+                </Typography>
+              </Box>
+            </Tooltip>
           </Box>
         )}
 

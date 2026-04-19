@@ -1,18 +1,17 @@
-/* eslint-disable */
 /**
  * ╔══════════════════════════════════════════════════════════════╗
  * ║  🚀  APOLLO COMMAND CENTER — NASA MISSION CONTROL LAYOUT   ║
  * ╠══════════════════════════════════════════════════════════════╣
- * ║  The nerve-center for all 12 PROJECT OLYMPUS agents.       ║
+ * ║  The nerve-center for the SoldiKeeper AI corporation.       ║
  * ║                                                            ║
- * ║  ▸ Tabbed layout: Fleet · Operations · Intelligence · Health║
- * ║  ▸ Sticky command bar with live counters                   ║
- * ║  ▸ Real-time fleet data — no hardcoded fixtures            ║
- * ║  ▸ Agent grid with per-agent slide-in detail panel         ║
+ * ║  ▸ 5 tabs: Fleet · Operations · Intelligence · Health · Gov ║
+ * ║  ▸ Sticky command bar with live ops + governance signals    ║
+ * ║  ▸ Real-time fleet data — 18 agents, dynamic UNION fetch    ║
+ * ║  ▸ Per-agent cost pill + drawer governance subtab           ║
  * ╚══════════════════════════════════════════════════════════════╝
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import {
@@ -28,7 +27,6 @@ import {
   Tab,
   Tooltip,
   IconButton,
-  Badge,
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -36,19 +34,23 @@ import {
   Terminal as OpsIcon,
   Psychology as IntelIcon,
   MonitorHeart as HealthIcon,
+  Security as GovIcon,
   FiberManualRecord as DotIcon,
 } from '@mui/icons-material';
 import { useAdminData } from '../../../contexts/AdminContext';
 import { FleetSummaryHeader, AgentGrid } from '../MissionControl';
 import AgentCommunicationLog from './AgentCommunicationLog';
 import EscalationHub from './EscalationHub';
-import { AGENTS as STATIC_AGENTS } from '../../../data/agentRegistry';
+import { AGENTS as STATIC_AGENTS, getAgent as getRegistryAgent } from '../../../data/agentRegistry';
 import TaskQueue from './TaskQueue';
 import AgentInterface from './AgentInterface';
 import SystemHealthPanel from './SystemHealthPanel';
 import ReasoningTracePanel from './ReasoningTracePanel';
 import GoalDashboard from './GoalDashboard';
 import CollaborationViewer from './CollaborationViewer';
+
+// God Mode panel embedded as the Governance subtab — single AI cockpit, no parallel hub
+const GodModePanel = React.lazy(() => import('../GodMode/GodModePanel'));
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -87,6 +89,7 @@ const TABS = [
   { id: 1, label: 'Operations',    icon: <OpsIcon    sx={{ fontSize: 18 }} />, color: MC.blue   },
   { id: 2, label: 'Intelligence',  icon: <IntelIcon  sx={{ fontSize: 18 }} />, color: MC.violet },
   { id: 3, label: 'Health',        icon: <HealthIcon sx={{ fontSize: 18 }} />, color: MC.amber  },
+  { id: 4, label: 'Governance',    icon: <GovIcon    sx={{ fontSize: 18 }} />, color: '#f43f5e' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -343,9 +346,15 @@ const AIAgentCommandCenter = () => {
   const [drawerOpen, setDrawerOpen]       = useState(false);
   const [activeTab, setActiveTab]         = useState(0);
   const [lastRefresh, setLastRefresh]     = useState(null);
+  // Governance signals from /admin/godmode/status — drives command-bar pills
+  const [govSignals, setGovSignals]       = useState({
+    openVotes: 0, pendingProposals: 0, blocks24h: 0, activeGoals: 0,
+    activeRules: 0, nextBoardMeeting: null, lastInvestorReport: null,
+  });
+  // LLM cost map is consumed inline via agent.costToday; no separate state needed
 
   /* ────────────────────────────────────────────────
-   *  📡  Fetch agent + activity data from backend
+   *  📡  Fetch agent + activity + governance data from backend
    * ──────────────────────────────────────────────── */
   const fetchData = useCallback(async (showRefreshing = false) => {
     if (!token) { setLoading(false); return; }
@@ -357,43 +366,86 @@ const AIAgentCommandCenter = () => {
         || 'https://soldikeeper-backend-production.up.railway.app/api';
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [statsRes, activityRes, fleetRes] = await Promise.all([
-        axios.get(`${base}/admin/agents/stats`,            { headers }),
-        axios.get(`${base}/admin/agents/activity?limit=100`, { headers }),
+      const [statsRes, activityRes, fleetRes, govRes, costsRes] = await Promise.all([
+        axios.get(`${base}/admin/agents/stats`,            { headers }).catch(() => null),
+        axios.get(`${base}/admin/agents/activity?limit=100`, { headers }).catch(() => null),
         axios.get(`${base}/admin/agent-management/fleet-status`, { headers }).catch(() => null),
+        axios.get(`${base}/admin/godmode/status`, { headers }).catch(() => null),
+        axios.get(`${base}/admin/agent-management/llm-costs`, { headers }).catch(() => null),
       ]);
 
-      // Build a lookup of real fleet data (totalExecutions, avgResponseTime, lastExecution, etc.)
+      // 1. Build a lookup of real fleet data (totalExecutions, avgResponseTime, lastExecution, etc.)
       const fleetMap = {};
       if (fleetRes?.data?.success && fleetRes.data.data?.agents) {
         fleetRes.data.data.agents.forEach(a => { fleetMap[a.id] = a; });
       }
 
-      setAgents(prev => prev.map(agent => {
-        const stats = statsRes.data?.success && statsRes.data.agents
-          ? statsRes.data.agents.find(a => a.agentId === agent.id)
+      // 2. Build cost map from /llm-costs (shape: { agents: [{ agentId, totalCost, callCount }] })
+      const costs = {};
+      const costAgents = costsRes?.data?.agents || costsRes?.data?.data?.agents || [];
+      costAgents.forEach(c => {
+        const id = c.agentId || c.id;
+        if (id) costs[id] = { totalCost: c.totalCost ?? 0, callCount: c.callCount ?? 0 };
+      });
+      // costs is consumed below when merging into each agent object
+
+      // 3. UNION of registry agents + backend agents (so all 18 — including new C-suite — show)
+      const registryById = new Map(STATIC_AGENTS.map(a => [a.id, a]));
+      const backendIds = Object.keys(fleetMap);
+      const unionIds = Array.from(new Set([...registryById.keys(), ...backendIds]));
+
+      const merged = unionIds.map(id => {
+        const reg = registryById.get(id) || getRegistryAgent(id) || {
+          id, number: id.split('-')[0] || '??',
+          name: fleetMap[id]?.name || id,
+          role: fleetMap[id]?.role || 'Agent',
+          color: '#64748b', emoji: '🤖',
+          domains: [], autonomy: 70,
+          description: fleetMap[id]?.role || 'Backend-registered agent.',
+          personality: { traits: [] }, mood: { current: 'idle', emoji: '🤖', energy: 70 },
+          worksWellWith: [], greetings: [], thinkingPhrases: [],
+        };
+        const stats = statsRes?.data?.success && statsRes.data.agents
+          ? statsRes.data.agents.find(a => a.agentId === id)
           : null;
-        const fleet = fleetMap[agent.id] || null;
+        const fleet = fleetMap[id] || null;
+        const cost  = costs[id] || null;
 
         return {
-          ...agent,
-          // Real-time status from stats endpoint
-          status: stats?.status || fleet?.status || agent.status,
-          currentTask: stats?.currentTask || fleet?.currentTask || agent.currentTask,
-          load: stats?.load ?? fleet?.load ?? agent.load,
-          // All-time metrics from fleet-status endpoint
-          tasksCompleted: fleet?.totalExecutions ?? agent.tasksCompleted,
-          avgResponseTime: fleet?.avgResponseTime ?? agent.avgResponseTime,
-          lastActive: fleet?.lastExecution || fleet?.lastHeartbeat || agent.lastActive,
-          // Today's stats
+          ...reg,
+          status: stats?.status || fleet?.status || reg.status || 'idle',
+          currentTask: stats?.currentTask || fleet?.currentTask || reg.currentTask,
+          load: stats?.load ?? fleet?.load ?? reg.load,
+          tasksCompleted: fleet?.totalExecutions ?? reg.tasksCompleted,
+          avgResponseTime: fleet?.avgResponseTime ?? reg.avgResponseTime,
+          lastActive: fleet?.lastExecution || fleet?.lastHeartbeat || reg.lastActive,
           tasksToday: fleet?.tasksToday ?? 0,
           successRate: fleet?.successRate ?? null,
-          autonomyLevel: fleet?.autonomyLevel ?? agent.autonomy,
+          autonomyLevel: fleet?.autonomyLevel ?? reg.autonomy,
+          // Cost telemetry surfaced on the AgentCard via the registry-injected `costToday`
+          costToday: cost?.totalCost ?? 0,
+          llmCallsToday: cost?.callCount ?? 0,
         };
-      }));
+      });
 
-      if (activityRes.data.success) {
+      setAgents(merged);
+
+      if (activityRes?.data?.success) {
         setActivities(activityRes.data.activities || []);
+      }
+
+      // 4. Governance signals (votes, proposals, blocks, next board)
+      const signals = govRes?.data?.data?.signals || govRes?.data?.signals;
+      if (signals && !signals.error) {
+        setGovSignals({
+          openVotes:        signals.openVotes ?? 0,
+          pendingProposals: signals.pendingProposals ?? 0,
+          blocks24h:        signals.blocks24h ?? 0,
+          activeGoals:      signals.activeGoals ?? 0,
+          activeRules:      signals.activeRules ?? 0,
+          nextBoardMeeting: signals.nextBoardMeeting ? new Date(signals.nextBoardMeeting) : null,
+          lastInvestorReport: signals.lastInvestorReport || null,
+        });
       }
 
       setApiAvailable(true);
@@ -546,7 +598,7 @@ const AIAgentCommandCenter = () => {
 
         <Box sx={{ flex: 1 }} />
 
-        {/* Live stat pills */}
+        {/* Live ops stat pills */}
         <StatPill label="agents" value={agents.length}    color={MC.violet} />
         <StatPill label="active" value={activeCount}      color={MC.green}  pulse={activeCount > 0} />
         {errorCount > 0 && (
@@ -560,6 +612,54 @@ const AIAgentCommandCenter = () => {
             color={avgSuccessRate >= 90 ? MC.green : avgSuccessRate >= 70 ? MC.amber : MC.red}
           />
         )}
+
+        {/* ── Governance signals — click jumps to Governance tab ── */}
+        {(govSignals.openVotes > 0 || govSignals.pendingProposals > 0 || govSignals.blocks24h > 0 || govSignals.nextBoardMeeting) && (
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 0.75,
+            ml: 0.5, pl: 1.5,
+            borderLeft: `1px solid rgba(255,255,255,0.08)`,
+          }}>
+            {govSignals.openVotes > 0 && (
+              <Tooltip title="Open council votes — click to review">
+                <Box onClick={() => setActiveTab(4)} sx={{ cursor: 'pointer' }}>
+                  <StatPill label="votes" value={govSignals.openVotes} color={MC.amber} pulse />
+                </Box>
+              </Tooltip>
+            )}
+            {govSignals.pendingProposals > 0 && (
+              <Tooltip title="Agent self-improvement proposals awaiting your decision">
+                <Box onClick={() => setActiveTab(4)} sx={{ cursor: 'pointer' }}>
+                  <StatPill label="proposals" value={govSignals.pendingProposals} color="#f43f5e" pulse />
+                </Box>
+              </Tooltip>
+            )}
+            {govSignals.blocks24h > 0 && (
+              <Tooltip title="Constitutional rule blocks in last 24h">
+                <Box onClick={() => setActiveTab(4)} sx={{ cursor: 'pointer' }}>
+                  <StatPill label="blocks24h" value={govSignals.blocks24h} color={MC.red} />
+                </Box>
+              </Tooltip>
+            )}
+            {govSignals.nextBoardMeeting && (
+              <Tooltip title={`Next Apollo board meeting: ${new Date(govSignals.nextBoardMeeting).toLocaleString()}`}>
+                <Box onClick={() => setActiveTab(4)} sx={{ cursor: 'pointer' }}>
+                  <StatPill
+                    label="board"
+                    value={(() => {
+                      const ms = new Date(govSignals.nextBoardMeeting).getTime() - Date.now();
+                      const days = Math.max(0, Math.floor(ms / (24 * 3600 * 1000)));
+                      const hours = Math.max(0, Math.floor((ms % (24 * 3600 * 1000)) / (3600 * 1000)));
+                      return days > 0 ? `${days}d` : `${hours}h`;
+                    })()}
+                    color={MC.violet}
+                  />
+                </Box>
+              </Tooltip>
+            )}
+          </Box>
+        )}
+
         <StatPill
           label={apiAvailable ? 'LIVE' : 'OFFLINE'}
           value={apiAvailable ? '●' : '○'}
@@ -829,6 +929,25 @@ const AIAgentCommandCenter = () => {
               </DarkPanel>
             </Grid>
           </Grid>
+        )}
+
+        {/* ════════════════════
+         *  TAB 4 — GOVERNANCE  (God Mode embedded)
+         *  Single AI cockpit — operations + governance under one roof
+         * ════════════════════ */}
+        {!loading && activeTab === 4 && (
+          <DarkPanel accent="#f43f5e">
+            <Box sx={{ p: { xs: 1, md: 2 } }}>
+              <Suspense fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, py: 6 }}>
+                  <CircularProgress size={28} sx={{ color: '#f43f5e' }} />
+                  <Typography variant="body2" sx={{ color: MC.slate }}>Loading governance plane…</Typography>
+                </Box>
+              }>
+                <GodModePanel />
+              </Suspense>
+            </Box>
+          </DarkPanel>
         )}
       </Box>
 
