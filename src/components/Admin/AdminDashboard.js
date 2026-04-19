@@ -83,6 +83,7 @@ import {
   Shield as ShieldIcon,
   BarChart as BarChartIcon,
   Chat as ChatIcon,
+  Security as GodModeIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
@@ -122,6 +123,7 @@ const AIAgentCommandCenter = React.lazy(() => import('./AIAgent/AIAgentCommandCe
 const AdminDocumentation = React.lazy(() => import('./AdminDocumentation'));
 const CostManagement = React.lazy(() => import('./CostManagement'));
 const LLMManagement = React.lazy(() => import('./LLMManagement'));
+const GodModePanel = React.lazy(() => import('./GodMode'));
 
 
 // Loading fallback component
@@ -477,6 +479,18 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="Component Showcase" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <ComponentShowcase />
+              </Suspense>
+            </AdminErrorBoundary>
+          )
+        },
+        {
+          label: 'God Mode',
+          shortLabel: 'GodMode',
+          icon: <GodModeIcon />,
+          component: (
+            <AdminErrorBoundary componentName="God Mode" autoRetry maxRetries={2}>
+              <Suspense fallback={<ComponentLoader />}>
+                <GodModePanel />
               </Suspense>
             </AdminErrorBoundary>
           )
