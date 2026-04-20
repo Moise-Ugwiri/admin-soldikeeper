@@ -220,6 +220,7 @@ const ACTIONS = {
   SET_FINANCIAL_INTELLIGENCE: 'SET_FINANCIAL_INTELLIGENCE',
   SET_SECURITY_DATA: 'SET_SECURITY_DATA',
   SET_COMPLIANCE_DATA: 'SET_COMPLIANCE_DATA',
+  MERGE_COMPLIANCE_REALTIME: 'MERGE_COMPLIANCE_REALTIME',
   SET_ADMIN_ROLES: 'SET_ADMIN_ROLES',
   SET_ADMIN_USERS: 'SET_ADMIN_USERS',
   // Real-time increments (WebSocket-driven)
@@ -355,6 +356,37 @@ const adminReducer = (state, action) => {
 
     case ACTIONS.SET_COMPLIANCE_DATA:
       return { ...state, complianceData: action.payload };
+
+    case ACTIONS.MERGE_COMPLIANCE_REALTIME: {
+      const cur = state.complianceData || {};
+      const { auditAppend, gdprUpdate, policyUpdate } = action.payload || {};
+      const next = { ...cur, _realtimeTick: Date.now() };
+      if (auditAppend) {
+        const existing = Array.isArray(cur.auditLogs) ? cur.auditLogs : [];
+        // Mark realtime additions so the UI can highlight them
+        const incoming = { ...auditAppend, _realtime: true };
+        next.auditLogs = [incoming, ...existing].slice(0, 200);
+        next.stats = {
+          ...(cur.stats || {}),
+          totalLogs: (cur.stats?.totalLogs || 0) + 1
+        };
+      }
+      if (gdprUpdate?.request) {
+        const existing = Array.isArray(cur.gdprRequests) ? cur.gdprRequests : [];
+        const idx = existing.findIndex(r => String(r.id) === String(gdprUpdate.request.id));
+        if (idx === -1) {
+          next.gdprRequests = [{ ...gdprUpdate.request, _realtime: true }, ...existing];
+        } else {
+          const merged = [...existing];
+          merged[idx] = { ...merged[idx], ...gdprUpdate.request, _realtime: true };
+          next.gdprRequests = merged;
+        }
+      }
+      if (policyUpdate) {
+        next._policyTick = Date.now();
+      }
+      return { ...state, complianceData: next };
+    }
 
     case ACTIONS.SET_ADMIN_ROLES:
       return { ...state, adminRoles: action.payload };
@@ -968,15 +1000,16 @@ export const AdminProvider = ({ children }) => {
   }, [fetchSecurityData, setError]);
 
   // Compliance Data
-  const fetchComplianceData = useCallback(async (dateRange = 'last7days') => {
+  const fetchComplianceData = useCallback(async (params = 'last7days') => {
     try {
       setLoading(true);
-      const data = await adminService.getComplianceData(dateRange);
+      const data = await adminService.getComplianceData(params);
       const complianceData = data.success ? data.data : data;
       dispatch({ type: ACTIONS.SET_COMPLIANCE_DATA, payload: complianceData });
+      return complianceData;
     } catch (error) {
       console.error('fetchComplianceData error:', error);
-      // Don't set error - use fallback data in component
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -985,7 +1018,7 @@ export const AdminProvider = ({ children }) => {
   const processGdprRequest = useCallback(async (requestId, action, notes = '') => {
     try {
       const result = await adminService.processGdprRequest(requestId, action, notes);
-      // Refresh compliance data
+      // Realtime fan-out will refresh, but trigger immediate refetch for UX
       fetchComplianceData();
       return result;
     } catch (error) {
@@ -993,6 +1026,29 @@ export const AdminProvider = ({ children }) => {
       throw error;
     }
   }, [fetchComplianceData, setError]);
+
+  const exportSingleAuditLog = useCallback(async (logId) => {
+    const blob = await adminService.exportSingleAuditLog(logId);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `audit_log_${logId}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    return blob;
+  }, []);
+
+  const fetchCompliancePolicies = useCallback(async () => {
+    const data = await adminService.getCompliancePolicies();
+    return data.success ? data.data : data;
+  }, []);
+
+  const updateCompliancePolicy = useCallback(async (policyId, payload) => {
+    const data = await adminService.updateCompliancePolicy(policyId, payload);
+    return data.success ? data.data : data;
+  }, []);
 
   const exportAuditLogs = useCallback(async (format = 'csv', dateRange = 'last30days') => {
     try {
@@ -1446,6 +1502,18 @@ export const AdminProvider = ({ children }) => {
       });
     });
 
+    // ── Compliance realtime ───────────────────────────────────────────
+    // Audit-log append → patch into compliance state if loaded
+    const unsubscribeAuditEvent = websocketService.on('admin:audit:event', (data) => {
+      dispatch({ type: ACTIONS.MERGE_COMPLIANCE_REALTIME, payload: { auditAppend: data } });
+    });
+    const unsubscribeGdprUpdate = websocketService.on('admin:gdpr:update', (data) => {
+      dispatch({ type: ACTIONS.MERGE_COMPLIANCE_REALTIME, payload: { gdprUpdate: data } });
+    });
+    const unsubscribePolicyUpdate = websocketService.on('admin:compliance:policy:update', (data) => {
+      dispatch({ type: ACTIONS.MERGE_COMPLIANCE_REALTIME, payload: { policyUpdate: data } });
+    });
+
     // Fallback polling if WebSocket is not available after 10 seconds
     const fallbackTimer = setTimeout(() => {
       if (!websocketService.isConnected()) {
@@ -1473,6 +1541,9 @@ export const AdminProvider = ({ children }) => {
       unsubscribeUserNew();
       unsubscribeTransactionNew();
       unsubscribeSecurityAlert();
+      unsubscribeAuditEvent();
+      unsubscribeGdprUpdate();
+      unsubscribePolicyUpdate();
       
       if (wsConnected.current) {
         websocketService.disconnect();
@@ -1595,6 +1666,9 @@ export const AdminProvider = ({ children }) => {
     fetchComplianceData,
     processGdprRequest,
     exportAuditLogs,
+    exportSingleAuditLog,
+    fetchCompliancePolicies,
+    updateCompliancePolicy,
     
     // Admin Roles Management
     fetchAdminRoles,

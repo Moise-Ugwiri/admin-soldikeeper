@@ -773,11 +773,11 @@ class AdminService {
   }
 
   // Compliance & Audit
-  async getComplianceData(dateRange = 'last7days') {
+  async getComplianceData(params = {}) {
     try {
-      const response = await apiClient.get('/admin/compliance/data', {
-        params: { dateRange }
-      });
+      // Backwards-compat: accept a string dateRange or a params object.
+      const query = typeof params === 'string' ? { dateRange: params } : params;
+      const response = await apiClient.get('/admin/compliance/data', { params: query });
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch compliance data');
@@ -805,6 +805,35 @@ class AdminService {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to export audit logs');
+    }
+  }
+
+  async exportSingleAuditLog(logId) {
+    try {
+      const response = await apiClient.get(`/admin/compliance/audit/${logId}/export`, {
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to export audit log');
+    }
+  }
+
+  async getCompliancePolicies() {
+    try {
+      const response = await apiClient.get('/admin/compliance/policies');
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch compliance policies');
+    }
+  }
+
+  async updateCompliancePolicy(policyId, payload) {
+    try {
+      const response = await apiClient.put(`/admin/compliance/policies/${policyId}`, payload);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update compliance policy');
     }
   }
 
