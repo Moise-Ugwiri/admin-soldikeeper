@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Grid,
@@ -17,13 +17,11 @@ import {
   LinearProgress,
   Paper,
   useTheme,
-  useMediaQuery,
   alpha,
   IconButton
 } from '@mui/material';
 import {
   CheckCircle,
-  Cancel,
   Remove,
   OpenInNew,
   Language,
@@ -46,7 +44,7 @@ import {
 const SITE_URL = 'https://www.soldikeeper.com';
 
 const SITEMAP_URL = `${SITE_URL}/sitemap.xml`;
-const ROBOTS_URL = `${SITE_URL}/robots.txt`;
+// ROBOTS_URL: ${SITE_URL}/robots.txt
 
 // Section B — public routes
 const PUBLIC_ROUTES = [
@@ -245,13 +243,10 @@ const StatCard = ({ icon, label, value, sublabel, color }) => {
 
 const SEODashboard = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // Crawl stat helpers
   const totalRoutes = PUBLIC_ROUTES.length;
   const routesWithSchema = PUBLIC_ROUTES.filter(r => r.schema).length;
-  const allMetaOk = PUBLIC_ROUTES.every(r => r.title && r.desc && r.canonical && r.og && r.h1);
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
