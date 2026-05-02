@@ -84,6 +84,7 @@ import {
   BarChart as BarChartIcon,
   Chat as ChatIcon,
   Security as GodModeIcon,
+  Language as SEOIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
@@ -124,6 +125,7 @@ const AdminDocumentation = React.lazy(() => import('./AdminDocumentation'));
 const CostManagement = React.lazy(() => import('./CostManagement'));
 const LLMManagement = React.lazy(() => import('./LLMManagement'));
 const GodModePanel = React.lazy(() => import('./GodMode'));
+const SEODashboard = React.lazy(() => import('./SEODashboard'));
 
 
 // Loading fallback component
@@ -503,6 +505,18 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="Documentation" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <AdminDocumentation />
+              </Suspense>
+            </AdminErrorBoundary>
+          )
+        },
+        {
+          label: '📈 SEO',
+          shortLabel: 'SEO',
+          icon: <SEOIcon />,
+          component: (
+            <AdminErrorBoundary componentName="SEO Dashboard" autoRetry maxRetries={2}>
+              <Suspense fallback={<ComponentLoader />}>
+                <SEODashboard />
               </Suspense>
             </AdminErrorBoundary>
           )
