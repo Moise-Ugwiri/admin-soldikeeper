@@ -676,32 +676,6 @@ const FeatureFlagsManager = () => {
   );
 
   /* ======================================================================
-     Row selection helpers
-     ====================================================================== */
-
-  const handleSelectAll = useCallback((e) => {
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      if (e.target.checked) {
-        filteredFlags.forEach((f) => next.add(f.key));
-      } else {
-        filteredFlags.forEach((f) => next.delete(f.key));
-      }
-      return next;
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredFlags]); // filteredFlags is declared below — ESLint will warn but logic is correct
-
-  const handleRowSelect = useCallback((flagKey) => (e) => {
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      if (e.target.checked) next.add(flagKey);
-      else next.delete(flagKey);
-      return next;
-    });
-  }, []);
-
-  /* ======================================================================
      Derived state
      ====================================================================== */
 
@@ -716,6 +690,31 @@ const FeatureFlagsManager = () => {
       );
     });
   }, [flags, search, categoryFilter]);
+
+  /* ======================================================================
+     Row selection helpers
+     ====================================================================== */
+
+  const handleSelectAll = useCallback((e) => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (e.target.checked) {
+        filteredFlags.forEach((f) => next.add(f.key));
+      } else {
+        filteredFlags.forEach((f) => next.delete(f.key));
+      }
+      return next;
+    });
+  }, [filteredFlags]);
+
+  const handleRowSelect = useCallback((flagKey) => (e) => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (e.target.checked) next.add(flagKey);
+      else next.delete(flagKey);
+      return next;
+    });
+  }, []);
 
   const drawerFlag = useMemo(
     () => flags.find((f) => f.key === drawerFlagKey) || null,
