@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -29,7 +29,18 @@ import {
   DialogActions,
   Snackbar,
   CircularProgress,
-  useTheme
+  useTheme,
+  Avatar,
+  Chip,
+  Tooltip,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Stack,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -39,12 +50,25 @@ import {
   Backup as BackupIcon,
   Build as MaintenanceIcon,
   Save as SaveIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  PersonAdd as PersonAddIcon,
+  Group as GroupIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Shield as ShieldIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  Visibility as ViewerIcon,
+  ManageAccounts as ManagerIcon,
+  AdminPanelSettings as AdminIcon,
+  SupervisorAccount as SuperAdminIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAdminData } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
+import apiClient from '../../services/api';
 
 const SystemSettings = () => {
   const { t } = useTranslation();
@@ -121,11 +145,92 @@ const SystemSettings = () => {
   const [logsDialog, setLogsDialog] = useState({ open: false, logs: [], loading: false });
   const [backupsDialog, setBackupsDialog] = useState({ open: false, backups: [], loading: false });
 
+  // Team & Access state
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [rolePermissions, setRolePermissions] = useState({});
+  const [createAdminOpen, setCreateAdminOpen] = useState(false);
+  const [editAdminTarget, setEditAdminTarget] = useState(null);
+  const [deleteAdminTarget, setDeleteAdminTarget] = useState(null);
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', adminRole: 'manager', adminPermissions: [] });
+  const [customPerms, setCustomPerms] = useState(false);
+
   const showSnack = (message, severity = 'info') => setSnackbar({ open: true, severity, message });
   const closeSnack = () => setSnackbar(s => ({ ...s, open: false }));
 
   const askConfirm = (title, message, onConfirm) => setConfirmDialog({ open: true, title, message, onConfirm });
   const closeConfirm = () => setConfirmDialog({ open: false, title: '', message: '', onConfirm: null });
+
+  // Team & Access — role config
+  const ROLE_CONFIG = {
+    superadmin: { label: 'Super Admin', color: 'error',   icon: <SuperAdminIcon fontSize="small" /> },
+    admin:      { label: 'Admin',       color: 'warning', icon: <AdminIcon fontSize="small" /> },
+    manager:    { label: 'Manager',     color: 'primary', icon: <ManagerIcon fontSize="small" /> },
+    viewer:     { label: 'Viewer',      color: 'default', icon: <ViewerIcon fontSize="small" /> },
+  };
+
+  const ALL_PERMISSIONS = ['overview','users','transactions','analytics','financial','security','compliance','activity','content','settings','flags','team'];
+
+  const getEffectivePermissions = (member) => {
+    if (member.adminPermissions && member.adminPermissions.length > 0) return member.adminPermissions;
+    return rolePermissions[member.adminRole] || [];
+  };
+
+  // Team data fetching
+  const fetchTeam = useCallback(async () => {
+    setTeamLoading(true);
+    try {
+      const [teamRes, rolesRes] = await Promise.all([
+        apiClient.get('/admin/team'),
+        apiClient.get('/admin/team/roles')
+      ]);
+      setTeamMembers(teamRes.data.data || []);
+      setRolePermissions(rolesRes.data.data || {});
+    } catch (err) {
+      console.error('Failed to load team:', err);
+    } finally {
+      setTeamLoading(false);
+    }
+  }, []);
+
+  // Team action handlers
+  const handleCreateAdmin = async () => {
+    try {
+      await apiClient.post('/admin/team', {
+        ...newAdmin,
+        adminPermissions: customPerms ? newAdmin.adminPermissions : []
+      });
+      setCreateAdminOpen(false);
+      setNewAdmin({ name: '', email: '', password: '', adminRole: 'manager', adminPermissions: [] });
+      setCustomPerms(false);
+      fetchTeam();
+      showSnack('Admin user created successfully', 'success');
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Failed to create admin', 'error');
+    }
+  };
+
+  const handleUpdateRole = async (userId, adminRole, adminPermissions) => {
+    try {
+      await apiClient.patch(`/admin/team/${userId}`, { adminRole, adminPermissions });
+      fetchTeam();
+      setEditAdminTarget(null);
+      showSnack('Admin role updated', 'success');
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Failed to update role', 'error');
+    }
+  };
+
+  const handleRevokeAccess = async (userId) => {
+    try {
+      await apiClient.delete(`/admin/team/${userId}`);
+      fetchTeam();
+      setDeleteAdminTarget(null);
+      showSnack('Admin access revoked', 'success');
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Failed to revoke access', 'error');
+    }
+  };
 
   // Maintenance handlers
   const handleClearCache = () => {
@@ -231,6 +336,11 @@ const SystemSettings = () => {
     }
   }, [adminStats]);
 
+  // Fetch team data when Team & Access tab is active
+  useEffect(() => {
+    if (activeTab === 6) fetchTeam();
+  }, [activeTab, fetchTeam]);
+
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -326,6 +436,7 @@ const SystemSettings = () => {
             <Tab icon={<IntegrationIcon />} label="Integrations" />
             <Tab icon={<BackupIcon />} label="Backup" />
             <Tab icon={<MaintenanceIcon />} label="Maintenance" />
+            <Tab icon={<GroupIcon />} label="Team & Access" />
           </Tabs>
         </Box>
 
@@ -772,6 +883,136 @@ const SystemSettings = () => {
         </TabPanel>
       </Card>
 
+      {/* ── Team & Access Tab Panel (index 6) ── */}
+      {/* Rendered outside Card to avoid nested card issues */}
+      <TabPanel value={activeTab} index={6}>
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h6" gutterBottom>Admin Team</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage admin accounts and their access levels. Only superadmins can create or remove accounts.
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<PersonAddIcon />}
+            onClick={() => setCreateAdminOpen(true)}
+            size="small"
+          >
+            Add Admin
+          </Button>
+        </Box>
+
+        {teamLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name / Email</TableCell>
+                  <TableCell>Role</TableCell>
+                  <TableCell>Permissions</TableCell>
+                  <TableCell>Since</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {teamMembers.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                      No admin users found
+                    </TableCell>
+                  </TableRow>
+                )}
+                {teamMembers.map((member) => {
+                  const rc = ROLE_CONFIG[member.adminRole] || ROLE_CONFIG.viewer;
+                  const perms = getEffectivePermissions(member);
+                  const isCustom = member.adminPermissions && member.adminPermissions.length > 0;
+                  return (
+                    <TableRow key={member._id} hover>
+                      <TableCell>
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
+                            {(member.name || member.email || '?')[0].toUpperCase()}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>{member.name || '—'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{member.email}</Typography>
+                          </Box>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          icon={rc.icon}
+                          label={rc.label}
+                          color={rc.color}
+                          size="small"
+                          variant="outlined"
+                        />
+                        {isCustom && (
+                          <Chip label="custom perms" size="small" sx={{ ml: 0.5, fontSize: 10 }} />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title={perms.join(', ')} arrow>
+                          <Typography variant="caption" color="text.secondary">
+                            {perms.length} permission{perms.length !== 1 ? 's' : ''}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {member.createdAt ? new Date(member.createdAt).toLocaleDateString() : '—'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                          <Tooltip title="Edit role & permissions">
+                            <IconButton
+                              size="small"
+                              onClick={() => setEditAdminTarget({ user: { ...member, _editRole: member.adminRole, _editPerms: getEffectivePermissions(member) }, open: true })}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Revoke admin access">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => setDeleteAdminTarget({ user: member, open: true })}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+
+        {/* Role legend */}
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>Role Permissions Reference</Typography>
+          <Stack spacing={1}>
+            {Object.entries(ROLE_CONFIG).map(([roleKey, rc]) => (
+              <Stack key={roleKey} direction="row" spacing={1} alignItems="center">
+                <Chip icon={rc.icon} label={rc.label} color={rc.color} size="small" variant="outlined" sx={{ minWidth: 110 }} />
+                <Typography variant="caption" color="text.secondary">
+                  {(rolePermissions[roleKey] || []).join(' · ') || 'No permissions assigned'}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+        </Box>
+      </TabPanel>
+
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialog.open} onClose={closeConfirm}>
         <DialogTitle>{confirmDialog.title}</DialogTitle>
@@ -851,6 +1092,208 @@ const SystemSettings = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setBackupsDialog(d => ({ ...d, open: false }))}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Create Admin Dialog ── */}
+      <Dialog open={createAdminOpen} onClose={() => setCreateAdminOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <PersonAddIcon color="primary" />
+            <Typography variant="h6">Add Admin User</Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              label="Full Name"
+              value={newAdmin.name}
+              onChange={(e) => setNewAdmin(p => ({ ...p, name: e.target.value }))}
+              size="small"
+              fullWidth
+              required
+            />
+            <TextField
+              label="Email Address"
+              type="email"
+              value={newAdmin.email}
+              onChange={(e) => setNewAdmin(p => ({ ...p, email: e.target.value }))}
+              size="small"
+              fullWidth
+              required
+              helperText="If this email already exists in the platform, admin access will be granted to that account."
+            />
+            <TextField
+              label="Password"
+              type="password"
+              value={newAdmin.password}
+              onChange={(e) => setNewAdmin(p => ({ ...p, password: e.target.value }))}
+              size="small"
+              fullWidth
+              required
+              helperText="Minimum 8 characters. Only used if creating a new account."
+            />
+            <FormControl size="small" fullWidth>
+              <InputLabel>Admin Role</InputLabel>
+              <Select
+                value={newAdmin.adminRole}
+                label="Admin Role"
+                onChange={(e) => setNewAdmin(p => ({ ...p, adminRole: e.target.value }))}
+              >
+                {Object.entries(ROLE_CONFIG).map(([roleKey, rc]) => (
+                  <MenuItem key={roleKey} value={roleKey}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {rc.icon}
+                      <Box>
+                        <Typography variant="body2">{rc.label}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {(rolePermissions[roleKey] || []).slice(0, 4).join(', ')}{(rolePermissions[roleKey] || []).length > 4 ? '...' : ''}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControlLabel
+              control={<Switch checked={customPerms} onChange={(e) => setCustomPerms(e.target.checked)} size="small" />}
+              label={<Typography variant="body2">Override permissions (custom)</Typography>}
+            />
+
+            {customPerms && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                  Select specific permissions (overrides role defaults):
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {ALL_PERMISSIONS.map(perm => {
+                    const active = newAdmin.adminPermissions.includes(perm);
+                    return (
+                      <Chip
+                        key={perm}
+                        label={perm}
+                        size="small"
+                        color={active ? 'primary' : 'default'}
+                        variant={active ? 'filled' : 'outlined'}
+                        onClick={() => setNewAdmin(p => ({
+                          ...p,
+                          adminPermissions: active
+                            ? p.adminPermissions.filter(x => x !== perm)
+                            : [...p.adminPermissions, perm]
+                        }))}
+                        clickable
+                      />
+                    );
+                  })}
+                </Box>
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateAdminOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCreateAdmin}
+            disabled={!newAdmin.name || !newAdmin.email || !newAdmin.password || !newAdmin.adminRole}
+            startIcon={<PersonAddIcon />}
+          >
+            Create Admin
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Edit Admin Dialog ── */}
+      <Dialog open={!!editAdminTarget?.open} onClose={() => setEditAdminTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Admin Permissions</DialogTitle>
+        <DialogContent dividers>
+          {editAdminTarget?.user && (
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <Typography variant="body2">
+                Editing: <strong>{editAdminTarget.user.name || editAdminTarget.user.email}</strong>
+              </Typography>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Admin Role</InputLabel>
+                <Select
+                  value={editAdminTarget.user._editRole || 'manager'}
+                  label="Admin Role"
+                  onChange={(e) => setEditAdminTarget(p => ({ ...p, user: { ...p.user, _editRole: e.target.value } }))}
+                >
+                  {Object.entries(ROLE_CONFIG).map(([roleKey, rc]) => (
+                    <MenuItem key={roleKey} value={roleKey}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        {rc.icon}
+                        <Typography variant="body2">{rc.label}</Typography>
+                      </Stack>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                  Custom permissions (leave all unchecked to use role defaults):
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {ALL_PERMISSIONS.map(perm => {
+                    const active = (editAdminTarget.user._editPerms || []).includes(perm);
+                    return (
+                      <Chip
+                        key={perm}
+                        label={perm}
+                        size="small"
+                        color={active ? 'primary' : 'default'}
+                        variant={active ? 'filled' : 'outlined'}
+                        onClick={() => setEditAdminTarget(p => ({
+                          ...p,
+                          user: {
+                            ...p.user,
+                            _editPerms: active
+                              ? (p.user._editPerms || []).filter(x => x !== perm)
+                              : [...(p.user._editPerms || []), perm]
+                          }
+                        }))}
+                        clickable
+                      />
+                    );
+                  })}
+                </Box>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditAdminTarget(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const { _id, _editRole, _editPerms } = editAdminTarget.user;
+              handleUpdateRole(_id, _editRole, _editPerms);
+            }}
+          >
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Revoke Access Confirm Dialog ── */}
+      <Dialog open={!!deleteAdminTarget?.open} onClose={() => setDeleteAdminTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Revoke Admin Access</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to revoke admin access for <strong>{deleteAdminTarget?.user?.email}</strong>?
+            Their account will remain but they will no longer be able to access the admin panel.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteAdminTarget(null)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => handleRevokeAccess(deleteAdminTarget.user._id)}
+          >
+            Revoke Access
+          </Button>
         </DialogActions>
       </Dialog>
 
