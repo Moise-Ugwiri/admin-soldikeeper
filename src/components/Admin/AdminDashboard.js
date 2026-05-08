@@ -126,6 +126,7 @@ const CostManagement = React.lazy(() => import('./CostManagement'));
 const LLMManagement = React.lazy(() => import('./LLMManagement'));
 const GodModePanel = React.lazy(() => import('./GodMode'));
 const SEODashboard = React.lazy(() => import('./SEODashboard'));
+const FeatureFlagsManager = React.lazy(() => import('./FeatureFlagsManager'));
 
 
 // Loading fallback component
@@ -457,6 +458,18 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="System Settings" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <SystemSettings />
+              </Suspense>
+            </AdminErrorBoundary>
+          )
+        },
+        {
+          label: '🚩 Feature Flags',
+          shortLabel: 'Flags',
+          icon: <SettingsIcon />,
+          component: (
+            <AdminErrorBoundary componentName="Feature Flags" autoRetry maxRetries={2}>
+              <Suspense fallback={<ComponentLoader />}>
+                <FeatureFlagsManager />
               </Suspense>
             </AdminErrorBoundary>
           )
