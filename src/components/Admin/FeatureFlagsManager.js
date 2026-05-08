@@ -72,9 +72,12 @@ import {
   Restore as RestoreIcon,
   Schedule as ScheduleIcon,
   Search as SearchIcon,
+  Upload as UploadIcon,
 } from '@mui/icons-material';
 
 import apiClient from '../../services/api';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 /* =========================================================================
    Constants
@@ -287,11 +290,20 @@ const FeatureFlagsManager = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewTier, setPreviewTier] = useState('free');
 
+  /* ── t10 — snapshot import preview ──────────────────────────────────  */
+  const [importPreview, setImportPreview] = useState(null);
+  // shape: { diffs: [...], importedFlags: [...] }
+
   /* ── Refs ───────────────────────────────────────────────────────────  */
   const searchInputRef   = useRef(null);
   const headingRef       = useRef(null);
   const drawerFlagKeyRef = useRef(drawerFlagKey);
+  const importInputRef   = useRef(null);
   useEffect(() => { drawerFlagKeyRef.current = drawerFlagKey; }, [drawerFlagKey]);
+
+  /* ── t12 — responsive breakpoint ────────────────────────────────────  */
+  const theme   = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   /* ======================================================================
      Data fetching
@@ -527,6 +539,45 @@ const FeatureFlagsManager = () => {
       .catch(() => setSnackbar({ severity: 'error', message: 'CSV export failed' }));
   }, []);
 
+  /** t10 — Export full snapshot JSON */
+  const handleExportSnapshot = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/admin/feature-flags/snapshot', { responseType: 'blob' });
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `feature-flags-snapshot-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setSnackbar({ severity: 'error', message: 'Export failed: ' + (err.message || 'Unknown error') });
+    }
+  }, []);
+
+  /** t10 — Import snapshot JSON: dry-run first to get diff preview */
+  const handleImportSnapshot = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const importedFlags = parsed.flags || [];
+      if (!importedFlags.length) {
+        setSnackbar({ severity: 'warning', message: 'No flags found in snapshot file' });
+        return;
+      }
+      // Dry run first — get diff preview
+      const { data: dryResult } = await apiClient.post('/admin/feature-flags/snapshot/apply', {
+        flags: importedFlags,
+        dryRun: true,
+      });
+      setImportPreview({ diffs: dryResult.diffs || [], importedFlags });
+    } catch (err) {
+      setSnackbar({ severity: 'error', message: 'Import failed: ' + (err.message || 'Invalid JSON') });
+    }
+  }, []);
+
   /* ======================================================================
      Toggle handler — P0 #1: fetch impact before confirm dialog
      ====================================================================== */
@@ -753,6 +804,33 @@ const FeatureFlagsManager = () => {
               </IconButton>
             </span>
           </Tooltip>
+
+          {/* t10 — Snapshot export */}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportSnapshot}
+          >
+            Export config
+          </Button>
+
+          {/* t10 — Snapshot import */}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<UploadIcon />}
+            onClick={() => importInputRef.current?.click()}
+          >
+            Import config
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleImportSnapshot}
+          />
         </Stack>
       </Stack>
 
@@ -850,7 +928,87 @@ const FeatureFlagsManager = () => {
         </Paper>
       )}
 
-      {/* ── Matrix table ─────────────────────────────────────────────────── */}
+      {/* ── Matrix table / Mobile cards (t12) ───────────────────────────── */}
+      {isMobile ? (
+        <Stack spacing={1.5} sx={{ p: 1 }}>
+          {loading && flags.length === 0
+            ? [0,1,2,3].map((i) => (
+                <Paper key={`sk-${i}`} variant="outlined" sx={{ p: 1.5 }}>
+                  <Skeleton width={180} height={24} sx={{ mb: 1 }} />
+                  <Skeleton width={80} height={20} />
+                </Paper>
+              ))
+            : null}
+          {!loading && filteredFlags.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              No feature flags match the current filter.
+            </Typography>
+          )}
+          {filteredFlags.map((flag) => {
+            const per    = flag.perTierEnabled || {};
+            const isCore = !!flag.isCore;
+            return (
+              <Paper key={flag.key} variant="outlined" sx={{ p: 1.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                  <Box>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      {isCore && (
+                        <Tooltip title="Core flag — always enabled">
+                          <LockIcon fontSize="small" color="action" />
+                        </Tooltip>
+                      )}
+                      <Typography variant="body2" fontWeight={600}>{flag.label}</Typography>
+                      {isModifiedFlag(flag) && (
+                        <Tooltip title="State differs from seed defaults" arrow>
+                          <Typography component="span" sx={{ fontSize: 14, lineHeight: 1 }}>🔸</Typography>
+                        </Tooltip>
+                      )}
+                    </Stack>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                      {flag.key}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row">
+                    <Tooltip title="View audit log">
+                      <IconButton size="small" onClick={() => setDrawerFlagKey(flag.key)}>
+                        <HistoryIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Stack>
+                <Chip
+                  size="small"
+                  label={flag.category || 'core'}
+                  color={CATEGORY_COLOR[flag.category] || 'default'}
+                  variant="outlined"
+                  sx={{ mb: 1 }}
+                />
+                <Stack spacing={0.5}>
+                  {TIERS.map((t) => (
+                    <Stack
+                      key={t.key}
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: TIER_BG[t.key] }}
+                    >
+                      <Typography variant="caption" fontWeight={500}>{t.label}</Typography>
+                      <Switch
+                        size="small"
+                        checked={!!per[t.key]}
+                        disabled={isCore || savingKey === flag.key}
+                        onChange={handleToggle(flag, t.key)}
+                        inputProps={{ 'aria-label': `${flag.key} for ${t.label}` }}
+                      />
+                    </Stack>
+                  ))}
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      ) : (
+      /* ── Matrix table (desktop) ───────────────────────────────────── */
       <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
         <TableContainer sx={{ maxHeight: 'calc(100vh - 320px)' }}>
           <Table stickyHeader size="small">
@@ -1144,6 +1302,7 @@ const FeatureFlagsManager = () => {
           </Box>
         )}
       </Paper>
+      )} {/* end isMobile ternary */}
 
       {/* =================================================================
           P0 #1 — Confirm dialog with impact preview
@@ -1656,6 +1815,57 @@ const FeatureFlagsManager = () => {
           </Box>
         )}
       </Drawer>
+
+      {/* =================================================================
+          t10 — Snapshot import diff preview dialog
+          ================================================================= */}
+      <Dialog open={!!importPreview} onClose={() => setImportPreview(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Snapshot Import Preview</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            <strong>{(importPreview?.diffs || []).filter(d => d.status === 'changed').length}</strong> flag(s) will change.{' '}
+            <strong>{(importPreview?.diffs || []).filter(d => d.status === 'unchanged').length}</strong> unchanged.{' '}
+            <strong>{(importPreview?.diffs || []).filter(d => d.status === 'not_found').length}</strong> not found in DB.
+          </Typography>
+
+          {(importPreview?.diffs || []).filter(d => d.status === 'changed').map(d => (
+            <Box key={d.key} sx={{ mb: 1 }}>
+              <Typography variant="caption" fontWeight={600}>{d.key}</Typography>
+              {(d.tierDiffs || []).map(td => (
+                <Typography key={td.tier} variant="caption" sx={{ display: 'block', ml: 1 }}>
+                  {td.tier}: {td.from ? 'on' : 'off'} → {td.to ? 'on' : 'off'}
+                </Typography>
+              ))}
+            </Box>
+          ))}
+
+          {(importPreview?.diffs || []).filter(d => d.status === 'changed').length === 0 && (
+            <Typography variant="body2" color="text.secondary">No changes detected.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportPreview(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={!(importPreview?.diffs || []).some(d => d.status === 'changed')}
+            onClick={async () => {
+              try {
+                await apiClient.post('/admin/feature-flags/snapshot/apply', {
+                  flags: importPreview.importedFlags,
+                  dryRun: false,
+                });
+                setSnackbar({ severity: 'success', message: 'Snapshot applied successfully' });
+                setImportPreview(null);
+                fetchFlags();
+              } catch (err) {
+                setSnackbar({ severity: 'error', message: 'Apply failed: ' + (err.message || '') });
+              }
+            }}
+          >
+            Apply
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar */}
       <Snackbar
