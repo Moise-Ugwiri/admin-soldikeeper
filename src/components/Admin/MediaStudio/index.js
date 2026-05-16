@@ -67,10 +67,12 @@ const MediaStudio = () => {
     });
 
     return () => {
-      Object.entries(pollTimersRef.current).forEach(([videoId, timer]) => {
+      // Capture ref value at cleanup time to satisfy react-hooks/exhaustive-deps
+      const timers = pollTimersRef.current;
+      Object.entries(timers).forEach(([videoId, timer]) => {
         if (!renderJobs[videoId] || renderJobs[videoId].status !== 'rendering') {
           clearInterval(timer);
-          delete pollTimersRef.current[videoId];
+          delete timers[videoId];
         }
       });
     };
