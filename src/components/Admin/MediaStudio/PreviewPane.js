@@ -23,9 +23,12 @@ const PreviewPane = ({ compositionId, inputProps, authHeader }) => {
   const [error, setError] = useState(null);
   const debounceRef = useRef(null);
   const abortRef = useRef(null);
+  // Ref mirrors unavailable state so the debounced effect sees it synchronously
+  // and stops firing requests to the server after the first 503.
+  const unavailableRef = useRef(false);
 
   const fetchPreview = useCallback(async (compId, props) => {
-    if (!compId) return;
+    if (!compId || unavailableRef.current) return;
 
     // Abort previous in-flight request
     if (abortRef.current) abortRef.current.abort();
@@ -42,12 +45,14 @@ const PreviewPane = ({ compositionId, inputProps, authHeader }) => {
       });
 
       if (res.status === 503) {
+        unavailableRef.current = true;
         setUnavailable(true);
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       setUnavailable(false);
+      unavailableRef.current = false;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       setPreviewUrl(prev => {
@@ -61,8 +66,10 @@ const PreviewPane = ({ compositionId, inputProps, authHeader }) => {
     }
   }, [authHeader]);
 
-  // Debounce: refresh preview 600ms after inputProps change
+  // Debounce: refresh preview 600ms after inputProps change.
+  // Skip entirely once server has confirmed preview is unavailable (503).
   useEffect(() => {
+    if (unavailableRef.current) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchPreview(compositionId, inputProps);
