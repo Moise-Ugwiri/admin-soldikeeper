@@ -1,161 +1,116 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+/* eslint-disable */
+import React, { useState, useCallback } from 'react';
 import {
-  Box, Grid, Typography, Button, Chip, CircularProgress, Alert
+  Box, Grid, Typography, Paper, Divider
 } from '@mui/material';
-import { VideoLibrary as VideoLibraryIcon, PlayArrow as RenderAllIcon } from '@mui/icons-material';
-import VideoCard from './VideoCard';
+import { VideoLibrary as VideoLibraryIcon } from '@mui/icons-material';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+import TemplatePicker from './TemplatePicker';
+import ContentEditor from './ContentEditor';
+import PreviewPane from './PreviewPane';
+import OutputPanel from './OutputPanel';
+import AIBriefDrawer from './AIBriefDrawer';
+import VideoLibraryDrawer from './VideoLibraryDrawer';
+
+const DEFAULT_PROPS = {
+  hook: 'Stop losing your receipts',
+  subtitle: 'Track every expense automatically',
+  features: ['Receipt OCR', 'Smart Budgets', 'SplitSmart'],
+  ctaText: 'Try SoldiKeeper Free',
+  ctaUrl: 'https://soldikeeper.com',
+  accentColor: '#10b981',
+  theme: 'green',
+  tone: 'energetic',
+};
 
 const MediaStudio = () => {
   const token = localStorage.getItem('token');
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
-  const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [renderJobs, setRenderJobs] = useState({});
-  const [renderAllLoading, setRenderAllLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('TikTok');
+  const [inputProps, setInputProps] = useState({ ...DEFAULT_PROPS });
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
-  const pollTimersRef = useRef({});
+  const handlePropsChange = useCallback((newProps) => {
+    setInputProps(newProps);
+  }, []);
 
-  const fetchVideos = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/admin/media/videos`, { headers: authHeader });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setVideos(data.videos || []);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    fetchVideos();
-    const interval = setInterval(fetchVideos, 30000);
-    return () => clearInterval(interval);
-  }, [fetchVideos]);
-
-  // Poll active render jobs every 2s
-  useEffect(() => {
-    // Capture the ref map at effect-run time so the cleanup closure uses the same object
-    const timers = pollTimersRef.current;
-
-    Object.entries(renderJobs).forEach(([videoId, job]) => {
-      if (job.status !== 'rendering') return;
-      if (timers[videoId]) return;
-
-      const timer = setInterval(async () => {
-        try {
-          const res = await fetch(`${API_URL}/admin/media/status/${job.jobId}`, { headers: authHeader });
-          const data = await res.json();
-          setRenderJobs((prev) => ({
-            ...prev,
-            [videoId]: { ...prev[videoId], status: data.status, progress: data.progress },
-          }));
-          if (data.status !== 'rendering') {
-            clearInterval(timers[videoId]);
-            delete timers[videoId];
-            fetchVideos();
-          }
-        } catch {
-          // ignore transient errors
-        }
-      }, 2000);
-
-      timers[videoId] = timer;
-    });
-
-    return () => {
-      Object.entries(timers).forEach(([videoId, timer]) => {
-        if (!renderJobs[videoId] || renderJobs[videoId].status !== 'rendering') {
-          clearInterval(timer);
-          delete timers[videoId];
-        }
-      });
-    };
-  }, [renderJobs, token]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleRenderStart = (videoId, jobId) => {
-    setRenderJobs((prev) => ({ ...prev, [videoId]: { jobId, status: 'rendering', progress: 0 } }));
+  const handleTemplateSelect = (templateId) => {
+    setSelectedTemplate(templateId);
+    // Reset render state when template changes (OutputPanel handles this internally)
   };
 
-  const handleRenderAll = async () => {
-    setRenderAllLoading(true);
-    for (const video of videos) {
-      try {
-        const res = await fetch(`${API_URL}/admin/media/render/${video.id}`, {
-          method: 'POST',
-          headers: { ...authHeader, 'Content-Type': 'application/json' },
-        });
-        const data = await res.json();
-        if (data.jobId) handleRenderStart(video.id, data.jobId);
-        await new Promise((r) => setTimeout(r, 500));
-      } catch (err) {
-        console.error('[MediaStudio] renderAll failed for', video.id, err);
-      }
-    }
-    setRenderAllLoading(false);
+  const handleAIApply = (generatedProps) => {
+    setInputProps(prev => ({ ...prev, ...generatedProps }));
   };
-
-  const enrichedVideos = videos.map((v) => ({
-    ...v,
-    renderStatus: renderJobs[v.id]?.status || null,
-    renderProgress: renderJobs[v.id]?.progress || 0,
-  }));
-
-  const readyCount = videos.filter((v) => v.exists).length;
-  const renderingCount = Object.values(renderJobs).filter((j) => j.status === 'rendering').length;
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+        <VideoLibraryIcon sx={{ color: '#10b981', fontSize: 28 }} />
         <Box>
-          <Typography variant="h5" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <VideoLibraryIcon /> Media Studio
-          </Typography>
+          <Typography variant="h5" fontWeight={800} lineHeight={1.1}>Media Studio</Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage and render Soldikeeper marketing videos
+            Build custom social media videos powered by AI
           </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Chip label={`${readyCount}/7 ready`} color={readyCount === 7 ? 'success' : 'default'} />
-          {renderingCount > 0 && (
-            <Chip
-              label={`${renderingCount} rendering`}
-              color="primary"
-              icon={<CircularProgress size={14} color="inherit" />}
-            />
-          )}
-          <Button
-            variant="contained"
-            startIcon={renderAllLoading ? <CircularProgress size={16} color="inherit" /> : <RenderAllIcon />}
-            onClick={handleRenderAll}
-            disabled={renderAllLoading || renderingCount > 0}
-          >
-            Render All
-          </Button>
         </Box>
       </Box>
 
-      {error && <Alert severity="warning" sx={{ mb: 2 }}>Could not load video list: {error}</Alert>}
+      {/* Template Picker (full width) */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+        <TemplatePicker selected={selectedTemplate} onSelect={handleTemplateSelect} />
+      </Paper>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Grid container spacing={3}>
-          {enrichedVideos.map((video) => (
-            <Grid item xs={12} sm={6} lg={4} key={video.id}>
-              <VideoCard video={video} authHeader={authHeader} onRenderStart={handleRenderStart} />
-            </Grid>
-          ))}
+      {/* Main two-column layout */}
+      <Grid container spacing={2} sx={{ flexGrow: 1 }}>
+        {/* Left: Content Editor */}
+        <Grid item xs={12} md={5}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
+            <ContentEditor
+              inputProps={inputProps}
+              onPropsChange={handlePropsChange}
+              onOpenAI={() => setAiDrawerOpen(true)}
+            />
+          </Paper>
         </Grid>
-      )}
+
+        {/* Right: Preview + Output */}
+        <Grid item xs={12} md={7}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <PreviewPane
+                compositionId={selectedTemplate}
+                inputProps={inputProps}
+                authHeader={authHeader}
+              />
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <OutputPanel
+                compositionId={selectedTemplate}
+                inputProps={inputProps}
+                authHeader={authHeader}
+                onOpenLibrary={() => setLibraryOpen(true)}
+              />
+            </Paper>
+          </Box>
+        </Grid>
+      </Grid>
+
+      {/* Drawers */}
+      <AIBriefDrawer
+        open={aiDrawerOpen}
+        onClose={() => setAiDrawerOpen(false)}
+        selectedTemplate={selectedTemplate}
+        authHeader={authHeader}
+        onApply={handleAIApply}
+      />
+      <VideoLibraryDrawer
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        authHeader={authHeader}
+      />
     </Box>
   );
 };
