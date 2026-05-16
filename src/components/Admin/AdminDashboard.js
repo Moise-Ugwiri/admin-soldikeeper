@@ -85,6 +85,7 @@ import {
   Chat as ChatIcon,
   Security as GodModeIcon,
   Language as SEOIcon,
+  VideoLibrary as VideoLibraryIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
@@ -127,6 +128,7 @@ const LLMManagement = React.lazy(() => import('./LLMManagement'));
 const GodModePanel = React.lazy(() => import('./GodMode'));
 const SEODashboard = React.lazy(() => import('./SEODashboard'));
 const FeatureFlagsManager = React.lazy(() => import('./FeatureFlagsManager'));
+const MediaStudio = React.lazy(() => import('./MediaStudio'));
 
 
 // Loading fallback component
@@ -530,6 +532,18 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="SEO Dashboard" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <SEODashboard />
+              </Suspense>
+            </AdminErrorBoundary>
+          )
+        },
+        {
+          label: '🎬 Media',
+          shortLabel: 'Media',
+          icon: <VideoLibraryIcon />,
+          component: (
+            <AdminErrorBoundary componentName="Media Studio" autoRetry maxRetries={2}>
+              <Suspense fallback={<ComponentLoader />}>
+                <MediaStudio />
               </Suspense>
             </AdminErrorBoundary>
           )
