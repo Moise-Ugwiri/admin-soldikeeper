@@ -41,9 +41,12 @@ const MediaStudio = () => {
 
   // Poll active render jobs every 2s
   useEffect(() => {
+    // Capture the ref map at effect-run time so the cleanup closure uses the same object
+    const timers = pollTimersRef.current;
+
     Object.entries(renderJobs).forEach(([videoId, job]) => {
       if (job.status !== 'rendering') return;
-      if (pollTimersRef.current[videoId]) return;
+      if (timers[videoId]) return;
 
       const timer = setInterval(async () => {
         try {
@@ -54,8 +57,8 @@ const MediaStudio = () => {
             [videoId]: { ...prev[videoId], status: data.status, progress: data.progress },
           }));
           if (data.status !== 'rendering') {
-            clearInterval(pollTimersRef.current[videoId]);
-            delete pollTimersRef.current[videoId];
+            clearInterval(timers[videoId]);
+            delete timers[videoId];
             fetchVideos();
           }
         } catch {
@@ -63,12 +66,10 @@ const MediaStudio = () => {
         }
       }, 2000);
 
-      pollTimersRef.current[videoId] = timer;
+      timers[videoId] = timer;
     });
 
     return () => {
-      // Capture ref value at cleanup time to satisfy react-hooks/exhaustive-deps
-      const timers = pollTimersRef.current;
       Object.entries(timers).forEach(([videoId, timer]) => {
         if (!renderJobs[videoId] || renderJobs[videoId].status !== 'rendering') {
           clearInterval(timer);
