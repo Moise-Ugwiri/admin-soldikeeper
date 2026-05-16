@@ -8,7 +8,8 @@ import {
   Download as DownloadIcon,
   VideoLibrary as LibraryIcon,
   CheckCircle as DoneIcon,
-  Error as ErrorIcon,
+  FileDownload as ExportIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -87,6 +88,17 @@ const OutputPanel = ({ compositionId, inputProps, authHeader, onOpenLibrary }) =
     }
   };
 
+  const handleExportSettings = () => {
+    const payload = { compositionId, inputProps, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${compositionId}-props.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const isDone = job?.status === 'done';
   const isFailed = job?.status === 'failed';
   const isRendering = job?.status === 'rendering';
@@ -113,7 +125,11 @@ const OutputPanel = ({ compositionId, inputProps, authHeader, onOpenLibrary }) =
         <Chip icon={<DoneIcon />} label="Video ready to download" color="success" variant="outlined" />
       )}
       {isFailed && (
-        <Alert severity="error">Render failed. Check that Remotion is running locally.</Alert>
+        <Alert severity="info" icon={<InfoIcon />}>
+          Cloud rendering is not yet available on this server. To generate the MP4,
+          run the Remotion project locally and use <strong>Export Settings</strong> below
+          to get a ready-made props file.
+        </Alert>
       )}
 
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -145,6 +161,15 @@ const OutputPanel = ({ compositionId, inputProps, authHeader, onOpenLibrary }) =
           size="small"
         >
           Video Library
+        </Button>
+
+        <Button
+          variant="outlined"
+          startIcon={<ExportIcon />}
+          onClick={handleExportSettings}
+          size="small"
+        >
+          Export Settings
         </Button>
       </Stack>
     </Box>
