@@ -71,8 +71,7 @@ const OutputPanel = ({ compositionId, inputProps, authHeader, onOpenLibrary }) =
     if (!job?.jobId) return;
     setDownloading(true);
     try {
-      // The library endpoint will have the file; use download by compositionId
-      const res = await fetch(`${API_URL}/admin/media/download/${compositionId}`, { headers: authHeader });
+      const res = await fetch(`${API_URL}/admin/media/download-generated/${job.jobId}`, { headers: authHeader });
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -114,10 +113,10 @@ const OutputPanel = ({ compositionId, inputProps, authHeader, onOpenLibrary }) =
       {isRendering && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="caption" color="primary">Rendering…</Typography>
+            <Typography variant="caption" color="primary">Rendering via GitHub Actions (~3–5 min)…</Typography>
             <Typography variant="caption" color="primary">{job.progress || 0}%</Typography>
           </Box>
-          <LinearProgress variant="determinate" value={job.progress || 0} sx={{ borderRadius: 4 }} />
+          <LinearProgress variant={job.progress > 0 ? 'determinate' : 'indeterminate'} value={job.progress || 0} sx={{ borderRadius: 4 }} />
         </Box>
       )}
 
