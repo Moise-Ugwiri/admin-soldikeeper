@@ -1,9 +1,15 @@
 /* eslint-disable */
 import React, { useState, useCallback } from 'react';
 import {
-  Box, Grid, Typography, Paper, Divider
+  Box, Grid, Typography, Paper, Divider, Tabs, Tab
 } from '@mui/material';
-import { VideoLibrary as VideoLibraryIcon } from '@mui/icons-material';
+import {
+  VideoLibrary as VideoLibraryIcon,
+  AutoAwesome as AutoAwesomeStudioIcon,
+  VideoLibrary as VideoLibraryStudioIcon,
+} from '@mui/icons-material';
+
+import AIVideoTab from './AIVideoTab';
 
 import TemplatePicker from './TemplatePicker';
 import ContentEditor from './ContentEditor';
@@ -27,6 +33,7 @@ const MediaStudio = () => {
   const token = localStorage.getItem('token');
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
+  const [activeTab, setActiveTab] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState('TikTok');
   const [inputProps, setInputProps] = useState({ ...DEFAULT_PROPS });
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
@@ -58,6 +65,14 @@ const MediaStudio = () => {
         </Box>
       </Box>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 2 }}>
+        <Tab icon={<VideoLibraryStudioIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Remotion Studio" />
+        <Tab icon={<AutoAwesomeStudioIcon sx={{ fontSize: 18, color: activeTab === 1 ? '#8b5cf6' : 'inherit' }} />} iconPosition="start" label="AI Video" />
+      </Tabs>
+
+      {activeTab === 0 && (
+        <>
       {/* Template Picker (full width) */}
       <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
         <TemplatePicker selected={selectedTemplate} onSelect={handleTemplateSelect} />
@@ -97,6 +112,12 @@ const MediaStudio = () => {
           </Box>
         </Grid>
       </Grid>
+        </>
+      )}
+
+      {activeTab === 1 && (
+        <AIVideoTab />
+      )}
 
       {/* Drawers */}
       <AIBriefDrawer
