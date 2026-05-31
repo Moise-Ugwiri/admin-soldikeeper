@@ -3,7 +3,7 @@
  * AI Corporation Control Plane  ·  /api/admin/godmode/*
  *
  * Tabs: Overview · OKRs · Scorecards · Constitution · Council ·
- *       Proposals · Agents · Simulator · Knowledge · Investor
+ *       Proposals · Agents · Simulator · Knowledge · Investor · Escalations
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -41,6 +41,7 @@ import {
   AutoFixHigh as AutoFixHighIcon,
   FlashOn as FlashOnIcon,
   Edit as EditIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import {
   RadialBarChart, RadialBar, ResponsiveContainer, Legend as RechartLegend,
@@ -54,6 +55,11 @@ const api = {
   post:  (url, body) => apiClient.post(`/admin/godmode${url}`, body).then(r => r.data?.data ?? r.data),
   patch: (url, body) => apiClient.patch(`/admin/godmode${url}`, body).then(r => r.data?.data ?? r.data),
   del:   (url)       => apiClient.delete(`/admin/godmode${url}`).then(r => r.data?.data ?? r.data),
+};
+
+const escApi = {
+  get:  (url)       => apiClient.get(`/admin/escalations${url}`).then(r => r.data),
+  post: (url, body) => apiClient.post(`/admin/escalations${url}`, body).then(r => r.data),
 };
 
 // ─── Style tokens ─────────────────────────────────────────────────────────────
@@ -258,6 +264,7 @@ function OverviewTab() {
   const [err, setErr]         = useState('');
   const [busy, setBusy]       = useState('');
   const [snack, setSnack]     = useState('');
+  const [triggerResult, setTriggerResult] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -276,7 +283,8 @@ function OverviewTab() {
   const trigger = useCallback(async (path, label) => {
     setBusy(label);
     try {
-      await api.post(path, {});
+      const r = await api.post(path, {});
+      setTriggerResult({ label, data: r });
       setSnack(`✅ ${label} triggered`);
     } catch (e) { setErr(e.response?.data?.message || e.message); }
     finally { setBusy(''); }
@@ -356,6 +364,61 @@ function OverviewTab() {
         </CardContent>
       </Card>
 
+      {triggerResult && (
+        <Card elevation={0} sx={{ ...GLASS(), mt: 2, mb: 2 }}>
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>✅ {triggerResult.label} — Result</Typography>
+              <IconButton size="small" onClick={() => setTriggerResult(null)}><CloseIcon fontSize="small" /></IconButton>
+            </Stack>
+
+            {triggerResult.data?.healthStatus && (
+              <Box>
+                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                  <Chip size="small" label={`Health: ${triggerResult.data.healthStatus?.toUpperCase()}`}
+                    color={triggerResult.data.healthStatus === 'green' ? 'success' : triggerResult.data.healthStatus === 'red' ? 'error' : 'warning'} />
+                  {triggerResult.data.openVotes > 0 && <Chip size="small" label={`${triggerResult.data.openVotes} open votes`} />}
+                  {triggerResult.data.openProposals > 0 && <Chip size="small" label={`${triggerResult.data.openProposals} proposals`} />}
+                </Stack>
+                {triggerResult.data.reasons?.length > 0 && (
+                  <Alert severity={triggerResult.data.healthStatus === 'green' ? 'success' : 'warning'} sx={{ mb: 1, fontSize: '0.8rem' }}>
+                    {triggerResult.data.reasons.join(' · ')}
+                  </Alert>
+                )}
+                {triggerResult.data.okr && (
+                  <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mb: 0.5 }}>
+                    OKRs: {triggerResult.data.okr.avgProgress}% avg · {triggerResult.data.okr.onTrack} on-track · {triggerResult.data.okr.atRisk} at-risk · {triggerResult.data.okr.offTrack} off-track
+                  </Typography>
+                )}
+                {triggerResult.data.fleet && (
+                  <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
+                    Fleet: {triggerResult.data.fleet.reviewed} agents · {triggerResult.data.fleet.totalTasks} tasks · ${triggerResult.data.fleet.llmCostUsd} cost
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {Array.isArray(triggerResult.data) && triggerResult.data.length > 0 && (
+              <Box>
+                <Typography variant="caption" sx={{ color: '#94a3b8', mb: 1, display: 'block' }}>{triggerResult.data.length} improvement opportunities identified</Typography>
+                {triggerResult.data.slice(0, 5).map((p, i) => (
+                  <Box key={i} sx={{ mb: 0.75, p: 1, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.03)' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: '#e2e8f0', display: 'block' }}>{p.title || p.type || `Opportunity ${i + 1}`}</Typography>
+                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>{p.description || p.summary || ''}</Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {!triggerResult.data?.healthStatus && !(Array.isArray(triggerResult.data) && triggerResult.data.length > 0) && (
+              <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#94a3b8', whiteSpace: 'pre-wrap', fontSize: '0.72rem' }}>
+                {JSON.stringify(triggerResult.data, null, 2)}
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* OKR snapshot */}
       {snap && (
         <Card elevation={0} sx={{ ...GLASS(), mb: 2 }}>
@@ -429,6 +492,9 @@ function OKRsTab() {
   const [approveLoading, setApproveLoading] = useState({});
   const [krDialog, setKrDialog] = useState(null);
   const [krForm, setKrForm] = useState({ description: '', targetValue: '', unit: '' });
+  const [editGoal, setEditGoal] = useState(null);
+  const [deleteGoal, setDeleteGoal] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '', period: 'quarter' });
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -444,6 +510,15 @@ function OKRsTab() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!editGoal) return;
+    setEditForm({
+      title: editGoal.title || '',
+      description: editGoal.description || '',
+      period: editGoal.period || 'quarter',
+    });
+  }, [editGoal]);
 
   const approveGoal = async (goalId) => {
     setApproveLoading(p => ({ ...p, [goalId]: true }));
@@ -476,6 +551,26 @@ function OKRsTab() {
       setCreateOpen(false);
       setForm({ title: '', description: '', period: 'quarter' });
       setSnack('Goal created'); load();
+    } catch (e) { setErr(e.response?.data?.message || e.message); }
+  };
+
+  const saveGoalEdit = async () => {
+    if (!editGoal) return;
+    try {
+      await api.patch(`/goals/${editGoal._id}`, editForm);
+      await load();
+      setEditGoal(null);
+      setSnack('Goal updated');
+    } catch (e) { setErr(e.response?.data?.message || e.message); }
+  };
+
+  const confirmDeleteGoal = async () => {
+    if (!deleteGoal) return;
+    try {
+      await api.del(`/goals/${deleteGoal._id}`);
+      setGoals(prev => prev.filter(goal => goal._id !== deleteGoal._id));
+      setDeleteGoal(null);
+      setSnack('Goal deleted');
     } catch (e) { setErr(e.response?.data?.message || e.message); }
   };
 
@@ -580,6 +675,16 @@ function OKRsTab() {
                   <Tooltip title="Add key result">
                     <IconButton size="small" sx={{ color: '#3b82f6' }} onClick={() => { setKrDialog(g); setKrForm({ description: '', targetValue: '', unit: '' }); }}>
                       <AddIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Edit goal">
+                    <IconButton size="small" sx={{ color: '#818cf8' }} onClick={() => setEditGoal(g)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete goal">
+                    <IconButton size="small" sx={{ color: '#ef4444' }} onClick={() => setDeleteGoal(g)}>
+                      <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Button size="small" onClick={() => setCheckInGoal(g)} sx={{ fontSize: '0.68rem' }}>
@@ -718,6 +823,43 @@ function OKRsTab() {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={!!editGoal} onClose={() => setEditGoal(null)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ ...GRADIENT_HEADER, color: '#e2e8f0' }}>Edit Goal</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1.5 }}>
+            <TextField label="Title" value={editForm.title}
+              onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} fullWidth />
+            <TextField label="Description" multiline rows={2} value={editForm.description}
+              onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} fullWidth />
+            <FormControl fullWidth>
+              <InputLabel>Period</InputLabel>
+              <Select value={editForm.period} label="Period" onChange={e => setEditForm(p => ({ ...p, period: e.target.value }))}>
+                <MenuItem value="quarter">Quarter</MenuItem>
+                <MenuItem value="half">Half</MenuItem>
+                <MenuItem value="year">Year</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditGoal(null)}>Cancel</Button>
+          <Button variant="contained" onClick={saveGoalEdit} disabled={!editForm.title.trim()}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!deleteGoal} onClose={() => setDeleteGoal(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: '#ef4444' }}>Delete Goal</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ pt: 1 }}>
+            Delete goal '{deleteGoal?.title}'? This cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteGoal(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={confirmDeleteGoal}>Delete</Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')}
         message={snack}
         action={<IconButton size="small" color="inherit" onClick={() => setSnack('')}><CloseIcon fontSize="small" /></IconButton>}
@@ -735,6 +877,9 @@ function ScorecardsTab() {
   const [loading, setLoading] = useState(false);
   const [err, setErr]         = useState('');
   const [snack, setSnack]     = useState('');
+  const [drillAgent, setDrillAgent] = useState(null);
+  const [drillData, setDrillData] = useState(null);
+  const [drillLoading, setDrillLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -747,6 +892,18 @@ function ScorecardsTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    let active = true;
+    if (!drillAgent) return undefined;
+    setDrillData(null);
+    setDrillLoading(true);
+    api.get(`/scorecards/${drillAgent}`)
+      .then(data => { if (active) setDrillData(data); })
+      .catch(e => { if (active) setErr(e.response?.data?.message || e.message); })
+      .finally(() => { if (active) setDrillLoading(false); });
+    return () => { active = false; };
+  }, [drillAgent]);
+
   const doRefresh = async () => {
     try {
       await api.post('/scorecards/refresh', {});
@@ -755,7 +912,7 @@ function ScorecardsTab() {
   };
 
   const gradeColor = g =>
-    ({ A: '#10b981', B: '#3b82f6', C: '#f59e0b', D: '#f97316', F: '#ef4444' }[g] || '#64748b');
+    ({ S: '#a855f7', A: '#10b981', B: '#3b82f6', C: '#f59e0b', D: '#ef4444', F: '#64748b' }[g] || '#64748b');
 
   const cellSx = (val, good, ok) => ({
     fontFamily: 'monospace',
@@ -827,7 +984,8 @@ function ScorecardsTab() {
               const ag = resolveAgent(c.agentId);
               const sr = (c.successRate || 0) * 100;
               return (
-                <TableRow key={c.agentId} sx={{ '&:hover': { bgcolor: alpha('#ffffff', 0.025) } }}>
+                <TableRow key={c.agentId} onClick={() => setDrillAgent(c.agentId)}
+                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: alpha('#ffffff', 0.03) } }}>
                   <TableCell>
                     <Stack direction="row" alignItems="center" spacing={1}>
                       <AgentAvatar agentId={c.agentId} size={24} />
@@ -853,6 +1011,75 @@ function ScorecardsTab() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={!!drillAgent} onClose={() => { setDrillAgent(null); setDrillData(null); }} fullWidth maxWidth="md">
+        <DialogTitle sx={{ ...GRADIENT_HEADER, color: '#e2e8f0' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <AgentAvatar agentId={drillAgent} size={28} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {resolveAgent(drillAgent)?.name || drillAgent} Scorecard
+            </Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {drillLoading && (
+            <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress size={28} />
+            </Box>
+          )}
+          {!drillLoading && drillData && (() => {
+            const successRate = drillData.successRate != null ? (drillData.successRate <= 1 ? drillData.successRate * 100 : drillData.successRate) : null;
+            const avgResponseMs = drillData.avgResponseMs ?? drillData.avgResponseTime;
+            const dimensionList = Array.isArray(drillData.dimensions)
+              ? drillData.dimensions
+              : Object.entries(drillData.dimensions || {}).map(([label, value]) => ({ label, value }));
+            return (
+              <Box sx={{ pt: 1 }}>
+                <Stack direction="row" spacing={1} sx={{ mb: 1.5 }} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Chip size="small" label={drillData.grade || '—'}
+                    sx={{ bgcolor: alpha(gradeColor(drillData.grade), 0.15), color: gradeColor(drillData.grade), fontWeight: 700 }} />
+                  <Chip size="small" label={`Score: ${drillData.score?.toFixed?.(1) ?? drillData.score ?? '—'}`} />
+                  <Chip size="small" label={`Period: ${drillData.period || period}`} />
+                </Stack>
+                <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
+                  <Chip size="small" label={`Tasks: ${drillData.taskCount ?? 0}`} />
+                  <Chip size="small" label={`Success: ${successRate != null ? `${successRate.toFixed(0)}%` : '—'}`} />
+                  <Chip size="small" label={`Avg: ${avgResponseMs ? `${(avgResponseMs / 1000).toFixed(1)}s` : '—'}`} />
+                  <Chip size="small" label={`Load: ${drillData.load != null ? `${drillData.load}%` : '—'}`} />
+                </Stack>
+                {dimensionList.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    {dimensionList.map((dimension, index) => {
+                      const rawValue = dimension.value?.value ?? dimension.value?.score ?? dimension.score ?? dimension.value ?? 0;
+                      const pct = Math.max(0, Math.min(rawValue <= 1 ? rawValue * 100 : rawValue, 100));
+                      return (
+                        <Box key={dimension.label || dimension.name || index} sx={{ mb: 1 }}>
+                          <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ mb: 0.25 }}>
+                            <Typography variant="caption" sx={{ color: '#cbd5e1' }}>{dimension.label || dimension.name || `Dimension ${index + 1}`}</Typography>
+                            <Typography variant="caption" sx={{ color: '#64748b', fontFamily: 'monospace' }}>{pct.toFixed(0)}%</Typography>
+                          </Stack>
+                          <Box sx={{ height: 8, borderRadius: 999, bgcolor: alpha('#ffffff', 0.06), overflow: 'hidden' }}>
+                            <Box sx={{ width: `${pct}%`, height: '100%', bgcolor: gradeColor(drillData.grade) }} />
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
+                {drillData.recommendations?.length > 0 && (
+                  <Box component="ul" sx={{ m: 0, pl: 2, color: '#94a3b8' }}>
+                    {drillData.recommendations.map((rec, index) => (
+                      <Typography key={index} component="li" variant="caption" sx={{ mb: 0.5, color: '#94a3b8' }}>
+                        {typeof rec === 'string' ? rec : rec.title || rec.description || JSON.stringify(rec)}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')}
         message={snack}
@@ -1196,6 +1423,11 @@ function CouncilTab() {
     const proposer = resolveAgent(v.proposingAgentId);
     const yes      = (v.castVotes || []).filter(cv => cv.vote === 'yes').length;
     const no       = (v.castVotes || []).filter(cv => cv.vote === 'no').length;
+    const voteEntries = v.votes || v.castVotes || [];
+    const forCount = voteEntries.filter(x => ['approve', 'yes'].includes(x.vote)).length || 0;
+    const againstCount = voteEntries.filter(x => ['reject', 'no'].includes(x.vote)).length || 0;
+    const abstainCount = voteEntries.filter(x => x.vote === 'abstain').length || 0;
+    const total = forCount + againstCount + abstainCount;
     return (
       <Card elevation={0} sx={{ ...GLASS(), mb: 1.5, borderLeft: `3px solid ${isOpen ? '#f59e0b' : '#334155'}` }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -1225,6 +1457,19 @@ function CouncilTab() {
               </Stack>
             )}
           </Stack>
+          <Box sx={{ mt: 1 }}>
+            <Box sx={{ display: 'flex', height: 6, borderRadius: 1, overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.06)' }}>
+              {total > 0 && <>
+                <Box sx={{ width: `${(forCount / total) * 100}%`, bgcolor: '#10b981' }} />
+                <Box sx={{ width: `${(againstCount / total) * 100}%`, bgcolor: '#ef4444' }} />
+                <Box sx={{ width: `${(abstainCount / total) * 100}%`, bgcolor: '#64748b' }} />
+              </>}
+            </Box>
+            <Typography variant="caption" sx={{ color: '#64748b', mt: 0.5, display: 'block' }}>
+              {forCount} for · {againstCount} against · {abstainCount} abstain
+              {(v.result || v.outcome) && ` · ${v.result || v.outcome}`}
+            </Typography>
+          </Box>
         </CardContent>
       </Card>
     );
@@ -1379,6 +1624,7 @@ function ProposalsTab() {
   const [decideDialog, setDecideDialog] = useState(null);
   const [rationale, setRationale]     = useState('');
   const [snack, setSnack]             = useState('');
+  const [simResults, setSimResults]   = useState({});
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -1399,6 +1645,24 @@ function ProposalsTab() {
       setDecideDialog(null); setRationale('');
       setSnack(`Proposal ${action}d`); load();
     } catch (e) { setErr(e.response?.data?.message || e.message); }
+  };
+
+  const runSimulation = async (p) => {
+    const id = p.proposalId || p._id;
+    setSimResults(prev => ({ ...prev, [id]: { loading: true, data: null, error: '' } }));
+    try {
+      const res = await api.post('/simulate', {
+        proposalId: id,
+        agentId: p.proposedBy || p.proposingAgentId || 'apollo',
+        tools: p.toolsRequested || [],
+      });
+      setSimResults(prev => ({ ...prev, [id]: { loading: false, data: res, error: '' } }));
+    } catch (e) {
+      setSimResults(prev => ({
+        ...prev,
+        [id]: { loading: false, data: null, error: e.response?.data?.message || e.message },
+      }));
+    }
   };
 
   const riskColor = r => ({ high: '#ef4444', medium: '#f59e0b', low: '#10b981' }[r] || '#64748b');
@@ -1435,58 +1699,86 @@ function ProposalsTab() {
       {list.map(p => {
         const ag   = resolveAgent(p.proposingAgentId);
         const conf = p.confidenceScore || p.confidence || 0;
+        const proposalId = p.proposalId || p._id;
         return (
-          <Card key={p.proposalId || p._id} elevation={0}
-            sx={{ ...GLASS(), mb: 1.5, borderLeft: `3px solid ${typeColor(p.type)}` }}>
-            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-              <Stack direction="row" alignItems="flex-start" spacing={1.5}>
-                <AgentAvatar agentId={p.proposingAgentId} size={32} />
-                <Box sx={{ flex: 1 }}>
-                  <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap mb={0.5}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {p.title || (p.summary || '').slice(0, 60)}
+          <React.Fragment key={proposalId}>
+            <Card elevation={0}
+              sx={{ ...GLASS(), mb: 1.5, borderLeft: `3px solid ${typeColor(p.type)}` }}>
+              <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+                  <AgentAvatar agentId={p.proposingAgentId} size={32} />
+                  <Box sx={{ flex: 1 }}>
+                    <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap mb={0.5}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {p.title || (p.summary || '').slice(0, 60)}
+                      </Typography>
+                      <Chip size="small" label={(p.type || '').replace(/_/g, ' ')}
+                        sx={{ bgcolor: alpha(typeColor(p.type), 0.15), color: typeColor(p.type), height: 18, fontSize: '0.65rem' }} />
+                      <Chip size="small" label={`risk: ${p.riskLevel || '?'}`}
+                        sx={{ bgcolor: alpha(riskColor(p.riskLevel), 0.15), color: riskColor(p.riskLevel), height: 18, fontSize: '0.65rem' }} />
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.8rem' }}>{p.summary}</Typography>
+                    <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
+                      <Typography variant="caption" color="text.secondary">Confidence:</Typography>
+                      <LinearProgress
+                        variant="determinate" value={Math.round(conf * 100)}
+                        sx={{
+                          flex: 1, maxWidth: 100, height: 4, borderRadius: 2,
+                          bgcolor: alpha('#ffffff', 0.07),
+                          '& .MuiLinearProgress-bar': {
+                            bgcolor: conf > 0.7 ? '#10b981' : conf > 0.4 ? '#f59e0b' : '#ef4444',
+                          },
+                        }}
+                      />
+                      <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#94a3b8' }}>
+                        {(conf * 100).toFixed(0)}%
+                      </Typography>
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                      by {ag?.name || p.proposingAgentId}
                     </Typography>
-                    <Chip size="small" label={(p.type || '').replace(/_/g, ' ')}
-                      sx={{ bgcolor: alpha(typeColor(p.type), 0.15), color: typeColor(p.type), height: 18, fontSize: '0.65rem' }} />
-                    <Chip size="small" label={`risk: ${p.riskLevel || '?'}`}
-                      sx={{ bgcolor: alpha(riskColor(p.riskLevel), 0.15), color: riskColor(p.riskLevel), height: 18, fontSize: '0.65rem' }} />
-                  </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.8rem' }}>{p.summary}</Typography>
-                  <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
-                    <Typography variant="caption" color="text.secondary">Confidence:</Typography>
-                    <LinearProgress
-                      variant="determinate" value={Math.round(conf * 100)}
-                      sx={{
-                        flex: 1, maxWidth: 100, height: 4, borderRadius: 2,
-                        bgcolor: alpha('#ffffff', 0.07),
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: conf > 0.7 ? '#10b981' : conf > 0.4 ? '#f59e0b' : '#ef4444',
-                        },
-                      }}
-                    />
-                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#94a3b8' }}>
-                      {(conf * 100).toFixed(0)}%
-                    </Typography>
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    by {ag?.name || p.proposingAgentId}
-                  </Typography>
-                </Box>
-              </Stack>
-              {status === 'pending_review' && (
-                <Stack direction="row" spacing={1} mt={1.5} justifyContent="flex-end">
-                  <Button size="small" color="success" startIcon={<CheckCircleIcon />}
-                    onClick={() => { setDecideDialog({ proposal: p, action: 'approve' }); setRationale(''); }}>
-                    Approve
-                  </Button>
-                  <Button size="small" color="error" startIcon={<BlockIcon />}
-                    onClick={() => { setDecideDialog({ proposal: p, action: 'reject' }); setRationale(''); }}>
-                    Reject
+                  </Box>
+                </Stack>
+                <Stack direction="row" spacing={1} mt={1.5} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
+                  {status === 'pending_review' && (
+                    <>
+                      <Button size="small" color="success" startIcon={<CheckCircleIcon />}
+                        onClick={() => { setDecideDialog({ proposal: p, action: 'approve' }); setRationale(''); }}>
+                        Approve
+                      </Button>
+                      <Button size="small" color="error" startIcon={<BlockIcon />}
+                        onClick={() => { setDecideDialog({ proposal: p, action: 'reject' }); setRationale(''); }}>
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  <Button size="small" variant="outlined"
+                    startIcon={simResults[proposalId]?.loading ? <CircularProgress size={12} /> : <PlayArrowIcon />}
+                    disabled={!!simResults[proposalId]?.loading}
+                    sx={{ color: '#a78bfa', borderColor: '#a78bfa' }}
+                    onClick={() => runSimulation(p)}>
+                    Dry-Run
                   </Button>
                 </Stack>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            {simResults[proposalId] && !simResults[proposalId].loading && (
+              <Box sx={{ ...GLASS(), p: 1.5, mt: -1, mb: 1.5, borderLeft: `3px solid ${simResults[proposalId].error ? '#ef4444' : '#a78bfa'}` }}>
+                {simResults[proposalId].error && <Typography variant="caption" color="error">{simResults[proposalId].error}</Typography>}
+                {simResults[proposalId].data && <>
+                  <Stack direction="row" spacing={1} sx={{ mb: 0.5 }}>
+                    <Chip size="small" label={simResults[proposalId].data.verdict || 'SIMULATED'} color={simResults[proposalId].data.verdict === 'PASS' ? 'success' : 'warning'} />
+                    <Chip size="small" label={`Risk: ${simResults[proposalId].data.riskLevel || 'unknown'}`} />
+                  </Stack>
+                  {simResults[proposalId].data.plan?.steps?.map((s, i) => (
+                    <Typography key={i} variant="caption" sx={{ display: 'block', color: '#94a3b8', fontFamily: 'monospace' }}>
+                      {i + 1}. {s.action || s.description || JSON.stringify(s)}
+                    </Typography>
+                  ))}
+                </>}
+              </Box>
+            )}
+          </React.Fragment>
         );
       })}
 
@@ -1865,6 +2157,7 @@ function KnowledgeTab({ onCountChange }) {
   const [upsertOpen, setUpsertOpen]   = useState(false);
   const [upsertForm, setUpsertForm]   = useState({ label: '', type: 'concept', summary: '', tags: '', confidence: '1.0' });
   const [snack, setSnack]             = useState('');
+  const [expandedEdges, setExpandedEdges] = useState({});
 
   const search = useCallback(async () => {
     setLoading(true); setErr('');
@@ -2008,6 +2301,29 @@ function KnowledgeTab({ onCountChange }) {
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
                   Last seen: {new Date(n.lastObservedAt).toLocaleDateString()}
                 </Typography>
+              )}
+              {n.edges?.length > 0 ? (
+                <Box sx={{ mt: 0.5 }}>
+                  <Button size="small" variant="text" sx={{ color: '#64748b', fontSize: '0.68rem', p: 0, minWidth: 0 }}
+                    onClick={() => setExpandedEdges(prev => ({ ...prev, [i]: !prev[i] }))}>
+                    {expandedEdges[i] ? '▲' : '▼'} {n.edges.length} edge{n.edges.length !== 1 ? 's' : ''}
+                  </Button>
+                  {expandedEdges[i] && (
+                    <Box sx={{ mt: 0.5, pl: 1 }}>
+                      {n.edges.map((e, j) => {
+                        const target = resolveAgent(e.targetId);
+                        return (
+                          <Typography key={j} variant="caption" sx={{ display: 'block', color: '#94a3b8', fontFamily: 'monospace', mb: 0.25 }}>
+                            <Chip size="small" label={e.type || 'relates_to'} sx={{ fontSize: '0.6rem', height: 16, mr: 0.5 }} />
+                            → {target?.name || e.targetId}{e.weight != null ? ` (w:${e.weight})` : ''}
+                          </Typography>
+                        );
+                      })}
+                    </Box>
+                  )}
+                </Box>
+              ) : (
+                n.edges !== undefined && <Typography variant="caption" sx={{ color: '#475569', mt: 0.5, display: 'block' }}>No edges</Typography>
               )}
             </CardContent>
           </Card>
@@ -2222,6 +2538,169 @@ function InvestorTab() {
   );
 }
 
+function EscalationsTab() {
+  const [escalations, setEscalations] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [snack, setSnack] = useState('');
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [severityFilter, setSeverityFilter] = useState('all');
+  const [respondTarget, setRespondTarget] = useState(null);
+  const [respondForm, setRespondForm] = useState({ response: '', decision: 'resolve' });
+  const [autoResolving, setAutoResolving] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr('');
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (severityFilter !== 'all') params.set('severity', severityFilter);
+      const query = params.toString();
+      const [esc, st] = await Promise.all([
+        escApi.get(query ? `?${query}` : ''),
+        escApi.get('/stats').catch(() => null),
+      ]);
+      setEscalations(esc.escalations || []);
+      if (st) setStats(st);
+    } catch (e) { setErr(e.response?.data?.message || e.message); }
+    finally { setLoading(false); }
+  }, [statusFilter, severityFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const respond = async () => {
+    try {
+      await escApi.post(`/${respondTarget._id}/respond`, respondForm);
+      setSnack('Response submitted'); setRespondTarget(null);
+      load();
+    } catch (e) { setSnack(e.response?.data?.message || e.message); }
+  };
+
+  const autoResolve = async (id) => {
+    setAutoResolving(prev => ({ ...prev, [id]: true }));
+    try {
+      await escApi.post(`/${id}/auto-resolve`, {});
+      setSnack('Auto-resolved'); load();
+    } catch (e) { setSnack(e.response?.data?.message || e.message); }
+    finally { setAutoResolving(prev => ({ ...prev, [id]: false })); }
+  };
+
+  const sevColor = s => ({ critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#22c55e' }[s] || '#64748b');
+
+  return (
+    <Box>
+      {stats && (
+        <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          {[
+            { label: 'Pending', value: stats.byStatus?.pending ?? '—', color: '#f59e0b' },
+            { label: 'Overdue', value: stats.overdue ?? '—', color: '#ef4444' },
+            { label: 'Critical', value: stats.bySeverity?.critical ?? '—', color: '#ef4444' },
+            { label: 'Resolved', value: stats.byStatus?.resolved ?? '—', color: '#22c55e' },
+          ].map(m => (
+            <Card key={m.label} elevation={0} sx={{ ...GLASS(), flex: '1 1 120px', minWidth: 100 }}>
+              <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 }, textAlign: 'center' }}>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: m.color, fontFamily: 'monospace' }}>{m.value}</Typography>
+                <Typography variant="caption" sx={{ color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</Typography>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
+
+      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        {['all', 'pending', 'acknowledged', 'resolved'].map(s => (
+          <Chip key={s} label={s} size="small" variant={statusFilter === s ? 'filled' : 'outlined'}
+            onClick={() => setStatusFilter(s)} sx={{ textTransform: 'capitalize', cursor: 'pointer' }} />
+        ))}
+        <Box sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', mx: 0.5 }} />
+        {['all', 'critical', 'high', 'medium', 'low'].map(s => (
+          <Chip key={s} label={s} size="small" variant={severityFilter === s ? 'filled' : 'outlined'}
+            onClick={() => setSeverityFilter(s)}
+            sx={{ textTransform: 'capitalize', cursor: 'pointer', ...(s !== 'all' ? { color: sevColor(s), borderColor: sevColor(s) } : {}) }} />
+        ))}
+        <IconButton size="small" onClick={load} sx={{ ml: 'auto' }}><RefreshIcon fontSize="small" /></IconButton>
+      </Stack>
+
+      {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+
+      {escalations.length === 0 && !loading && (
+        <Typography variant="body2" sx={{ color: '#64748b', textAlign: 'center', py: 4 }}>
+          No escalations found for current filters.
+        </Typography>
+      )}
+
+      <Stack spacing={1.5}>
+        {escalations.map(esc => (
+          <Card key={esc._id} elevation={0} sx={{ ...GLASS(), borderLeft: `3px solid ${sevColor(esc.severity)}` }}>
+            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                <Box sx={{ flex: 1, mr: 1 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                    <AgentAvatar agentId={esc.fromAgent} size={20} />
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#94a3b8' }}>
+                      {resolveAgent(esc.fromAgent)?.name || esc.fromAgent}
+                    </Typography>
+                    <Chip size="small" label={esc.severity} sx={{ fontSize: '0.6rem', height: 18, bgcolor: alpha(sevColor(esc.severity), 0.15), color: sevColor(esc.severity), fontWeight: 700 }} />
+                    <Chip size="small" label={esc.status} sx={{ fontSize: '0.6rem', height: 18 }} />
+                  </Stack>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#e2e8f0', mb: 0.25 }}>{esc.title || esc.subject}</Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+                    {(esc.summary || esc.description || '').slice(0, 160)}{(esc.summary || esc.description || '').length > 160 ? '…' : ''}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#475569', mt: 0.25, display: 'block' }}>
+                    {esc.createdAt ? new Date(esc.createdAt).toLocaleString() : ''}
+                  </Typography>
+                </Box>
+                <Stack direction="column" spacing={0.5} alignItems="flex-end">
+                  <Button size="small" variant="outlined" sx={{ fontSize: '0.7rem', py: 0.25 }}
+                    onClick={() => { setRespondTarget(esc); setRespondForm({ response: '', decision: 'resolve' }); }}>
+                    Respond
+                  </Button>
+                  <Button size="small" variant="text" sx={{ fontSize: '0.7rem', color: '#64748b', py: 0.25 }}
+                    disabled={!!autoResolving[esc._id]}
+                    startIcon={autoResolving[esc._id] ? <CircularProgress size={10} /> : null}
+                    onClick={() => autoResolve(esc._id)}>
+                    Auto-Resolve
+                  </Button>
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        ))}
+      </Stack>
+
+      <Dialog open={!!respondTarget} onClose={() => setRespondTarget(null)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ ...GRADIENT_HEADER, color: '#e2e8f0' }}>
+          Respond to Escalation
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ mb: 2, color: '#94a3b8' }}>
+            {respondTarget?.title || respondTarget?.subject}
+          </Typography>
+          <TextField fullWidth multiline rows={4} label="Response" value={respondForm.response}
+            onChange={e => setRespondForm(p => ({ ...p, response: e.target.value }))}
+            sx={{ mb: 2 }} />
+          <TextField select fullWidth label="Decision" value={respondForm.decision}
+            onChange={e => setRespondForm(p => ({ ...p, decision: e.target.value }))}>
+            <MenuItem value="resolve">✅ Resolve</MenuItem>
+            <MenuItem value="escalate">⬆️ Escalate further</MenuItem>
+            <MenuItem value="ignore">🚫 Ignore</MenuItem>
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRespondTarget(null)}>Cancel</Button>
+          <Button variant="contained" onClick={respond} disabled={!respondForm.response.trim()}>Submit</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')}
+        message={snack} action={<IconButton size="small" color="inherit" onClick={() => setSnack('')}><CloseIcon fontSize="small" /></IconButton>} />
+    </Box>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TAB DEFINITIONS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2236,6 +2715,7 @@ const TABS = [
   { id: 'simulator',    label: 'Simulator'     },
   { id: 'knowledge',    label: 'Knowledge'     },
   { id: 'investor',     label: 'Investor'      },
+  { id: 'escalations',  label: 'Escalations', icon: <WarningIcon fontSize="small" /> },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2246,6 +2726,7 @@ export default function GodModePanel() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [kgCount, setKgCount]     = useState(null);
   const [lastEvent, setLastEvent] = useState(null);
+  const [signals, setSignals]     = useState({});
 
   useEffect(() => {
     let active = true;
@@ -2263,6 +2744,14 @@ export default function GodModePanel() {
     })();
     return () => { active = false; if (unsub) unsub(); };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/status')
+      .then(data => { if (active) setSignals(data?.signals || {}); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [refreshKey]);
 
   const id = TABS[tab].id;
 
@@ -2313,7 +2802,14 @@ export default function GodModePanel() {
         }}
       >
         {TABS.map((t, i) => {
-          const isBadged = t.id === 'knowledge' && kgCount != null && kgCount > 0;
+          const badgeCount = t.id === 'knowledge' ? kgCount : t.id === 'escalations' ? signals?.pendingEscalations : null;
+          const isBadged = badgeCount != null && badgeCount > 0;
+          const labelNode = (
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              {t.icon || null}
+              <Box component="span">{t.label}</Box>
+            </Stack>
+          );
           return (
             <Tab
               key={t.id}
@@ -2321,13 +2817,13 @@ export default function GodModePanel() {
               label={
                 isBadged ? (
                   <Badge
-                    badgeContent={kgCount}
+                    badgeContent={badgeCount}
                     color="primary"
                     sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}
                   >
-                    {t.label}
+                    {labelNode}
                   </Badge>
-                ) : t.label
+                ) : labelNode
               }
             />
           );
@@ -2345,6 +2841,7 @@ export default function GodModePanel() {
         {id === 'simulator'    && <SimulatorTab    key={`si-${refreshKey}`} />}
         {id === 'knowledge'    && <KnowledgeTab    key={`kg-${refreshKey}`} onCountChange={setKgCount} />}
         {id === 'investor'     && <InvestorTab     key={`iv-${refreshKey}`} />}
+        {id === 'escalations'  && <EscalationsTab  key={`es-${refreshKey}`} />}
       </Box>
     </Box>
   );
