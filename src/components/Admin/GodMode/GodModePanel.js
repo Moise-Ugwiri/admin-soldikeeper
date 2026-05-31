@@ -23,8 +23,7 @@ import {
   DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   LinearProgress, Tooltip, Stack, Switch, FormControlLabel, Badge,
-  Card, CardContent, CardActions, Collapse, alpha, useTheme, Snackbar,
-  List, ListItem, ListItemText, ListItemSecondaryAction
+  Card, CardContent, Collapse, alpha, useTheme, Snackbar
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -33,11 +32,9 @@ import {
   Cancel as CancelIcon,
   Block as BlockIcon,
   PlayArrow as RunIcon,
-  Warning as WarnIcon,
   PowerSettingsNew as PowerIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  Send as SendIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Gavel as GavelIcon,
@@ -48,8 +45,7 @@ import {
   Person as AgentIcon,
   Bolt as TriggerIcon,
   HowToVote as VoteIcon,
-  LocalFireDepartment as FireIcon,
-  Settings as SettingsIcon
+  LocalFireDepartment as FireIcon
 } from '@mui/icons-material';
 
 const API = process.env.REACT_APP_API_URL || 'https://soldikeeper-backend-production.up.railway.app/api';
@@ -956,7 +952,6 @@ const AgentLifecyclePanel = ({ api }) => {
 
 // ── 7. Triggers & Settings Panel ──────────────────────────────────────────────
 const TriggersPanel = ({ api, token }) => {
-  const theme = useTheme();
   const [running, setRunning] = useState({});
   const [results, setResults] = useState({});
   const [snack, setSnack] = useState('');
