@@ -86,6 +86,7 @@ import {
   Security as GodModeIcon,
   Language as SEOIcon,
   VideoLibrary as VideoLibraryIcon,
+  AccountTree as BlueprintIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
@@ -126,6 +127,7 @@ const AdminDocumentation = React.lazy(() => import('./AdminDocumentation'));
 const CostManagement = React.lazy(() => import('./CostManagement'));
 const LLMManagement = React.lazy(() => import('./LLMManagement'));
 const GodModePanel = React.lazy(() => import('./GodMode'));
+const AgenticBlueprintTab = React.lazy(() => import('./AIAgent/AgenticBlueprintTab'));
 const SEODashboard = React.lazy(() => import('./SEODashboard'));
 const FeatureFlagsManager = React.lazy(() => import('./FeatureFlagsManager'));
 const MediaStudio = React.lazy(() => import('./MediaStudio'));
@@ -508,6 +510,18 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="God Mode" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <GodModePanel />
+              </Suspense>
+            </AdminErrorBoundary>
+          )
+        },
+        {
+          label: 'SK Blueprint',
+          shortLabel: 'Blueprint',
+          icon: <BlueprintIcon />,
+          component: (
+            <AdminErrorBoundary componentName="SK Agentic Blueprint" autoRetry maxRetries={2}>
+              <Suspense fallback={<ComponentLoader />}>
+                <AgenticBlueprintTab />
               </Suspense>
             </AdminErrorBoundary>
           )
