@@ -36,6 +36,7 @@ import {
   MonitorHeart as HealthIcon,
   Security as GovIcon,
   FiberManualRecord as DotIcon,
+  AutoAwesome as BlueprintIcon,
 } from '@mui/icons-material';
 import { useAdminData } from '../../../contexts/AdminContext';
 import { FleetSummaryHeader, AgentGrid } from '../MissionControl';
@@ -51,6 +52,8 @@ import CollaborationViewer from './CollaborationViewer';
 
 // God Mode panel embedded as the Governance subtab — single AI cockpit, no parallel hub
 const GodModePanel = React.lazy(() => import('../GodMode/GodModePanel'));
+// Architecture deep-dive blueprint tab
+const AgenticBlueprintTab = React.lazy(() => import('./AgenticBlueprintTab'));
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -85,11 +88,12 @@ const hexRgb = (hex) => {
  *  TAB DEFINITIONS
  * ═══════════════════════════════════════════════════════════════ */
 const TABS = [
-  { id: 0, label: 'Fleet',         icon: <FleetIcon  sx={{ fontSize: 18 }} />, color: MC.green  },
-  { id: 1, label: 'Operations',    icon: <OpsIcon    sx={{ fontSize: 18 }} />, color: MC.blue   },
-  { id: 2, label: 'Intelligence',  icon: <IntelIcon  sx={{ fontSize: 18 }} />, color: MC.violet },
-  { id: 3, label: 'Health',        icon: <HealthIcon sx={{ fontSize: 18 }} />, color: MC.amber  },
-  { id: 4, label: 'Governance',    icon: <GovIcon    sx={{ fontSize: 18 }} />, color: '#f43f5e' },
+  { id: 0, label: 'Fleet',               icon: <FleetIcon      sx={{ fontSize: 18 }} />, color: MC.green    },
+  { id: 1, label: 'Operations',          icon: <OpsIcon        sx={{ fontSize: 18 }} />, color: MC.blue     },
+  { id: 2, label: 'Intelligence',        icon: <IntelIcon      sx={{ fontSize: 18 }} />, color: MC.violet   },
+  { id: 3, label: 'Health',              icon: <HealthIcon     sx={{ fontSize: 18 }} />, color: MC.amber    },
+  { id: 4, label: 'Governance',          icon: <GovIcon        sx={{ fontSize: 18 }} />, color: '#f43f5e'   },
+  { id: 5, label: 'SK_Agentic_Blueprint',icon: <BlueprintIcon  sx={{ fontSize: 18 }} />, color: MC.violet   },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -945,6 +949,25 @@ const AIAgentCommandCenter = () => {
                 </Box>
               }>
                 <GodModePanel />
+              </Suspense>
+            </Box>
+          </DarkPanel>
+        )}
+
+        {/* ════════════════════
+         *  TAB 5 — SK AGENTIC BLUEPRINT
+         *  Deep-dive architecture reference — full agentic AI report
+         * ════════════════════ */}
+        {activeTab === 5 && (
+          <DarkPanel accent={MC.violet}>
+            <Box sx={{ p: { xs: 1.5, md: 3 } }}>
+              <Suspense fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, py: 8 }}>
+                  <CircularProgress size={28} sx={{ color: MC.violet }} />
+                  <Typography variant="body2" sx={{ color: MC.slate }}>Loading architecture blueprint…</Typography>
+                </Box>
+              }>
+                <AgenticBlueprintTab />
               </Suspense>
             </Box>
           </DarkPanel>
