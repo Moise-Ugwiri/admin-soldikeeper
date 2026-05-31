@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Box, CircularProgress, Alert, Typography } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminLogin from './AdminLogin';
