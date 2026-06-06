@@ -5,3 +5,8 @@ node_modules/.cache/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Remotion video project (nested package)
+remotion/node_modules/
+remotion/out/
+remotion/output.mp4

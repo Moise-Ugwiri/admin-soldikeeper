@@ -1,0 +1,27 @@
+{
+  "name": "soldikeeper-videos-v2",
+  "version": "2.0.0",
+  "description": "SoldiKeeper full marketing video suite — 7 videos, all platforms",
+  "main": "src/index.jsx",
+  "scripts": {
+    "studio": "remotion studio src/index.jsx",
+
+    "render:youtube":   "remotion render src/index.jsx YouTube      out/youtube-full-promo.mp4     --codec=h264",
+    "render:tiktok":    "remotion render src/index.jsx TikTok       out/tiktok-reels-short.mp4     --codec=h264",
+    "render:instagram": "remotion render src/index.jsx Instagram    out/instagram-square.mp4       --codec=h264",
+    "render:linkedin":  "remotion render src/index.jsx LinkedIn     out/linkedin-promo.mp4         --codec=h264",
+    "render:receipt":   "remotion render src/index.jsx FeatureReceipt  out/feature-receipt-scan.mp4   --codec=h264",
+    "render:budget":    "remotion render src/index.jsx FeatureBudget   out/feature-smart-budget.mp4   --codec=h264",
+    "render:split":     "remotion render src/index.jsx FeatureSplit    out/feature-split-bills.mp4    --codec=h264",
+
+    "render:all": "npm run render:youtube && npm run render:tiktok && npm run render:instagram && npm run render:linkedin && npm run render:receipt && npm run render:budget && npm run render:split"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.388",
+    "@remotion/cli": "^4.0.388",
+    "lucide-react": "^0.561.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "remotion": "^4.0.388"
+  }
+}

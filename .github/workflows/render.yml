@@ -1,0 +1,77 @@
+name: Render Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'Backend job ID'
+        required: true
+      composition_id:
+        description: 'Remotion composition ID (e.g. TikTok, Instagram)'
+        required: true
+      input_props:
+        description: 'Input props as JSON string'
+        required: true
+        default: '{}'
+      callback_url:
+        description: 'Backend URL to POST the rendered video to'
+        required: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: remotion
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: remotion/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chrome dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+            libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
+            libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0 \
+            libgtk-3-0 libx11-xcb1
+
+      - name: Render video
+        id: render
+        run: |
+          npx remotion render src/index.jsx "${{ inputs.composition_id }}" output.mp4 \
+            --props='${{ inputs.input_props }}' \
+            --codec=h264 \
+            --log=verbose
+
+      - name: Upload rendered video to backend
+        if: success()
+        working-directory: .
+        run: |
+          curl --fail --max-time 120 \
+            -X POST "${{ inputs.callback_url }}" \
+            -H "X-Render-Secret: ${{ secrets.RENDER_CALLBACK_SECRET }}" \
+            -F "jobId=${{ inputs.job_id }}" \
+            -F "compositionId=${{ inputs.composition_id }}" \
+            -F "video=@remotion/output.mp4;type=video/mp4"
+
+      - name: Notify backend of failure
+        if: failure()
+        working-directory: .
+        run: |
+          curl --max-time 30 \
+            -X POST "${{ inputs.callback_url }}/failed" \
+            -H "X-Render-Secret: ${{ secrets.RENDER_CALLBACK_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"jobId\":\"${{ inputs.job_id }}\",\"error\":\"GitHub Actions render failed\"}" \
+            || true
