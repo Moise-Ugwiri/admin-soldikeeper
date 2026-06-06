@@ -2,13 +2,19 @@
 import React from 'react';
 import {
   Box, TextField, Typography, FormGroup, FormControlLabel, Checkbox,
-  ToggleButtonGroup, ToggleButton, Stack, Button, Tooltip
+  ToggleButtonGroup, ToggleButton, Stack, Button, Tooltip,
+  FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import { AutoAwesome as AIIcon } from '@mui/icons-material';
 
 const ALL_FEATURES = ['Receipt OCR', 'Smart Budgets', 'SplitSmart', 'AI Insights', 'Multi-currency', 'Analytics'];
 const THEMES = ['green', 'blue', 'violet', 'amber'];
 const TONES = ['energetic', 'professional', 'friendly', 'urgent'];
+const CONTENT_TYPES = [
+  { value: 'promotional', label: 'Promotional' },
+  { value: 'educational', label: 'Educational' },
+  { value: 'feature_tutorial', label: 'Feature Tutorial' },
+];
 
 const BRAND_COLORS = {
   green: '#10b981',
@@ -22,7 +28,7 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
 
   const toggleFeature = (feat) => {
     const cur = inputProps.features || [];
-    const next = cur.includes(feat) ? cur.filter(f => f !== feat) : [...cur, feat];
+    const next = cur.includes(feat) ? cur.filter((f) => f !== feat) : [...cur, feat];
     set('features', next);
   };
 
@@ -32,7 +38,6 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
         Content
       </Typography>
 
-      {/* AI Button */}
       <Button
         variant="outlined"
         size="small"
@@ -43,10 +48,21 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
         Generate with AI
       </Button>
 
+      <FormControl fullWidth size="small">
+        <InputLabel>Content Type</InputLabel>
+        <Select
+          value={inputProps.contentType || 'promotional'}
+          label="Content Type"
+          onChange={(e) => set('contentType', e.target.value)}
+        >
+          {CONTENT_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+        </Select>
+      </FormControl>
+
       <TextField
         label="Hook / Headline"
         value={inputProps.hook || ''}
-        onChange={e => set('hook', e.target.value)}
+        onChange={(e) => set('hook', e.target.value)}
         inputProps={{ maxLength: 60 }}
         helperText={`${(inputProps.hook || '').length}/60`}
         size="small"
@@ -56,7 +72,7 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
       <TextField
         label="Subtitle"
         value={inputProps.subtitle || ''}
-        onChange={e => set('subtitle', e.target.value)}
+        onChange={(e) => set('subtitle', e.target.value)}
         inputProps={{ maxLength: 80 }}
         helperText={`${(inputProps.subtitle || '').length}/80`}
         size="small"
@@ -66,18 +82,26 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
       <TextField
         label="CTA Text"
         value={inputProps.ctaText || ''}
-        onChange={e => set('ctaText', e.target.value)}
+        onChange={(e) => set('ctaText', e.target.value)}
         size="small"
         fullWidth
       />
 
-      {/* Features */}
+      <TextField
+        label="CTA URL"
+        value={inputProps.ctaUrl || ''}
+        onChange={(e) => set('ctaUrl', e.target.value)}
+        size="small"
+        fullWidth
+        placeholder="https://soldikeeper.com"
+      />
+
       <Box>
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5, fontWeight: 600 }}>
           Features to highlight
         </Typography>
         <FormGroup row>
-          {ALL_FEATURES.map(f => (
+          {ALL_FEATURES.map((f) => (
             <FormControlLabel
               key={f}
               control={
@@ -95,13 +119,12 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
         </FormGroup>
       </Box>
 
-      {/* Theme */}
       <Box>
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5, fontWeight: 600 }}>
           Color Theme
         </Typography>
         <Stack direction="row" spacing={1}>
-          {THEMES.map(t => (
+          {THEMES.map((t) => (
             <Tooltip key={t} title={t}>
               <Box
                 onClick={() => { set('theme', t); set('accentColor', BRAND_COLORS[t]); }}
@@ -119,7 +142,6 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
         </Stack>
       </Box>
 
-      {/* Tone */}
       <Box>
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5, fontWeight: 600 }}>
           Tone
@@ -131,7 +153,7 @@ const ContentEditor = ({ inputProps, onPropsChange, onOpenAI }) => {
           size="small"
           sx={{ flexWrap: 'wrap' }}
         >
-          {TONES.map(t => (
+          {TONES.map((t) => (
             <ToggleButton key={t} value={t} sx={{ textTransform: 'capitalize', fontSize: 12 }}>
               {t}
             </ToggleButton>

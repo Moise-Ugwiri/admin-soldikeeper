@@ -6,24 +6,39 @@ import {
   Alert, Divider
 } from '@mui/material';
 import { Close as CloseIcon, AutoAwesome as AIIcon } from '@mui/icons-material';
+import { getApiUrl, getAuthHeader } from './api';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-const PLATFORMS = ['TikTok', 'Instagram', 'YouTube', 'LinkedIn', 'Feature Spotlight'];
+const API_URL = getApiUrl();
 const TONES = ['energetic', 'professional', 'friendly', 'urgent'];
-const AUDIENCES = ['young adults (18-30)', 'millennials (25-40)', 'freelancers', 'small business owners', 'budget-conscious families'];
+const AUDIENCES = [
+  'young adults (18-30)',
+  'millennials (25-40)',
+  'freelancers',
+  'small business owners',
+  'budget-conscious families',
+];
+const CONTENT_TYPES = [
+  { value: 'promotional', label: 'Promotional' },
+  { value: 'educational', label: 'Educational' },
+  { value: 'feature_tutorial', label: 'Feature Tutorial' },
+];
 
-const AIBriefDrawer = ({ open, onClose, selectedTemplate, authHeader, onApply }) => {
+const AIBriefDrawer = ({ open, onClose, selectedTemplate, inputProps, onApply }) => {
+  const authHeader = getAuthHeader();
   const [brief, setBrief] = useState('');
-  const [tone, setTone] = useState('energetic');
+  const [tone, setTone] = useState(inputProps?.tone || 'energetic');
   const [audience, setAudience] = useState('young adults (18-30)');
+  const [contentType, setContentType] = useState(inputProps?.contentType || 'promotional');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [warning, setWarning] = useState(null);
   const [result, setResult] = useState(null);
 
   const handleGenerate = async () => {
     if (!brief.trim()) return;
     setLoading(true);
     setError(null);
+    setWarning(null);
     setResult(null);
     try {
       const res = await fetch(`${API_URL}/admin/media/ai-brief`, {
@@ -34,11 +49,15 @@ const AIBriefDrawer = ({ open, onClose, selectedTemplate, authHeader, onApply })
           brief: brief.trim(),
           tone,
           audience,
+          contentType,
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setResult(data.inputProps);
+      if (data.meta?.fromFallback) {
+        setWarning(data.meta.message || 'AI unavailable — default copy was used instead.');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -64,31 +83,37 @@ const AIBriefDrawer = ({ open, onClose, selectedTemplate, authHeader, onApply })
       </Box>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Describe your campaign goal and Claude will generate hooks, copy, and CTAs for your video.
+        Describe your campaign goal and AI will generate hooks, copy, and CTAs for your video.
       </Typography>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
           label="What's the goal of this video?"
           placeholder="e.g. Show students how SoldiKeeper helps them track their food budget"
-          multiline
-          rows={3}
+          multiline rows={3}
           value={brief}
-          onChange={e => setBrief(e.target.value)}
+          onChange={(e) => setBrief(e.target.value)}
           fullWidth
         />
 
         <FormControl fullWidth size="small">
+          <InputLabel>Content Type</InputLabel>
+          <Select value={contentType} onChange={(e) => setContentType(e.target.value)} label="Content Type">
+            {CONTENT_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+          </Select>
+        </FormControl>
+
+        <FormControl fullWidth size="small">
           <InputLabel>Target Audience</InputLabel>
-          <Select value={audience} onChange={e => setAudience(e.target.value)} label="Target Audience">
-            {AUDIENCES.map(a => <MenuItem key={a} value={a}>{a}</MenuItem>)}
+          <Select value={audience} onChange={(e) => setAudience(e.target.value)} label="Target Audience">
+            {AUDIENCES.map((a) => <MenuItem key={a} value={a}>{a}</MenuItem>)}
           </Select>
         </FormControl>
 
         <FormControl fullWidth size="small">
           <InputLabel>Tone</InputLabel>
-          <Select value={tone} onChange={e => setTone(e.target.value)} label="Tone">
-            {TONES.map(t => <MenuItem key={t} value={t} sx={{ textTransform: 'capitalize' }}>{t}</MenuItem>)}
+          <Select value={tone} onChange={(e) => setTone(e.target.value)} label="Tone">
+            {TONES.map((t) => <MenuItem key={t} value={t} sx={{ textTransform: 'capitalize' }}>{t}</MenuItem>)}
           </Select>
         </FormControl>
 
@@ -103,6 +128,7 @@ const AIBriefDrawer = ({ open, onClose, selectedTemplate, authHeader, onApply })
         </Button>
 
         {error && <Alert severity="error">{error}</Alert>}
+        {warning && <Alert severity="warning">{warning}</Alert>}
 
         {result && (
           <Box>

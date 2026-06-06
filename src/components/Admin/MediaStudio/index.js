@@ -1,7 +1,7 @@
 /* eslint-disable */
 import React, { useState, useCallback } from 'react';
 import {
-  Box, Grid, Typography, Paper, Divider, Tabs, Tab
+  Box, Grid, Typography, Paper, Tabs, Tab
 } from '@mui/material';
 import {
   VideoLibrary as VideoLibraryIcon,
@@ -10,14 +10,12 @@ import {
 } from '@mui/icons-material';
 
 import AIVideoTab from './AIVideoTab';
-
 import TemplatePicker from './TemplatePicker';
 import ContentEditor from './ContentEditor';
 import PreviewPane from './PreviewPane';
 import OutputPanel from './OutputPanel';
 import AIBriefDrawer from './AIBriefDrawer';
 import VideoLibraryDrawer from './VideoLibraryDrawer';
-
 const DEFAULT_PROPS = {
   hook: 'Stop losing your receipts',
   subtitle: 'Track every expense automatically',
@@ -27,12 +25,10 @@ const DEFAULT_PROPS = {
   accentColor: '#10b981',
   theme: 'green',
   tone: 'energetic',
+  contentType: 'promotional',
 };
 
 const MediaStudio = () => {
-  const token = localStorage.getItem('token');
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
-
   const [activeTab, setActiveTab] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState('TikTok');
   const [inputProps, setInputProps] = useState({ ...DEFAULT_PROPS });
@@ -45,16 +41,14 @@ const MediaStudio = () => {
 
   const handleTemplateSelect = (templateId) => {
     setSelectedTemplate(templateId);
-    // Reset render state when template changes (OutputPanel handles this internally)
   };
 
   const handleAIApply = (generatedProps) => {
-    setInputProps(prev => ({ ...prev, ...generatedProps }));
+    setInputProps((prev) => ({ ...prev, ...generatedProps }));
   };
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <VideoLibraryIcon sx={{ color: '#10b981', fontSize: 28 }} />
         <Box>
@@ -65,7 +59,6 @@ const MediaStudio = () => {
         </Box>
       </Box>
 
-      {/* Tabs */}
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 2 }}>
         <Tab icon={<VideoLibraryStudioIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Remotion Studio" />
         <Tab icon={<AutoAwesomeStudioIcon sx={{ fontSize: 18, color: activeTab === 1 ? '#8b5cf6' : 'inherit' }} />} iconPosition="start" label="AI Video" />
@@ -73,45 +66,39 @@ const MediaStudio = () => {
 
       {activeTab === 0 && (
         <>
-      {/* Template Picker (full width) */}
-      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-        <TemplatePicker selected={selectedTemplate} onSelect={handleTemplateSelect} />
-      </Paper>
-
-      {/* Main two-column layout */}
-      <Grid container spacing={2} sx={{ flexGrow: 1 }}>
-        {/* Left: Content Editor */}
-        <Grid item xs={12} md={5}>
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-            <ContentEditor
-              inputProps={inputProps}
-              onPropsChange={handlePropsChange}
-              onOpenAI={() => setAiDrawerOpen(true)}
-            />
+          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+            <TemplatePicker selected={selectedTemplate} onSelect={handleTemplateSelect} />
           </Paper>
-        </Grid>
 
-        {/* Right: Preview + Output */}
-        <Grid item xs={12} md={7}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <PreviewPane
-                compositionId={selectedTemplate}
-                inputProps={inputProps}
-                authHeader={authHeader}
-              />
-            </Paper>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <OutputPanel
-                compositionId={selectedTemplate}
-                inputProps={inputProps}
-                authHeader={authHeader}
-                onOpenLibrary={() => setLibraryOpen(true)}
-              />
-            </Paper>
-          </Box>
-        </Grid>
-      </Grid>
+          <Grid container spacing={2} sx={{ flexGrow: 1 }}>
+            <Grid item xs={12} md={5}>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
+                <ContentEditor
+                  inputProps={inputProps}
+                  onPropsChange={handlePropsChange}
+                  onOpenAI={() => setAiDrawerOpen(true)}
+                />
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={7}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <PreviewPane
+                    compositionId={selectedTemplate}
+                    inputProps={inputProps}
+                  />
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <OutputPanel
+                    compositionId={selectedTemplate}
+                    inputProps={inputProps}
+                    onOpenLibrary={() => setLibraryOpen(true)}
+                  />
+                </Paper>
+              </Box>
+            </Grid>
+          </Grid>
         </>
       )}
 
@@ -119,18 +106,16 @@ const MediaStudio = () => {
         <AIVideoTab />
       )}
 
-      {/* Drawers */}
       <AIBriefDrawer
         open={aiDrawerOpen}
         onClose={() => setAiDrawerOpen(false)}
         selectedTemplate={selectedTemplate}
-        authHeader={authHeader}
+        inputProps={inputProps}
         onApply={handleAIApply}
       />
       <VideoLibraryDrawer
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
-        authHeader={authHeader}
       />
     </Box>
   );
