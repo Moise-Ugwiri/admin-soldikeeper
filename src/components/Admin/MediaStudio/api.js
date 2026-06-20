@@ -79,6 +79,24 @@ export async function uploadBrandAsset(file, meta = {}) {
   return data.asset;
 }
 
+export async function fetchScreenshotCatalog() {
+  const res = await fetch(`${getApiUrl()}/admin/media/screenshots/catalog`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load screenshot catalog');
+  return data;
+}
+
+export async function captureAppScreenshots(body = {}) {
+  const res = await fetch(`${getApiUrl()}/admin/media/screenshots/capture`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Screenshot capture failed');
+  return data;
+}
+
 export async function deleteBrandAsset(id) {
   const res = await fetch(`${getApiUrl()}/admin/media/assets/${id}`, {
     method: 'DELETE',

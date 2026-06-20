@@ -6,7 +6,8 @@ import {
 import UploadIcon from '@mui/icons-material/Upload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { listBrandAssets, uploadBrandAsset, deleteBrandAsset, getApiUrl } from './api';
+import ScreenshotMonitorIcon from '@mui/icons-material/ScreenshotMonitor';
+import { listBrandAssets, uploadBrandAsset, deleteBrandAsset, getApiUrl, fetchScreenshotCatalog, captureAppScreenshots } from './api';
 import BrandAssetThumb from './BrandAssetThumb';
 
 export default function BrandAssetManager({ selectedIds = [], onSelectionChange }) {
@@ -15,6 +16,9 @@ export default function BrandAssetManager({ selectedIds = [], onSelectionChange 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [label, setLabel] = useState('');
+  const [catalog, setCatalog] = useState([]);
+  const [liveCapture, setLiveCapture] = useState(false);
+  const [capturing, setCapturing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,6 +33,15 @@ export default function BrandAssetManager({ selectedIds = [], onSelectionChange 
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    fetchScreenshotCatalog()
+      .then((data) => {
+        setCatalog(data.screens || []);
+        setLiveCapture(Boolean(data.liveCaptureAvailable));
+      })
+      .catch(() => {});
+  }, []);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -54,6 +67,23 @@ export default function BrandAssetManager({ selectedIds = [], onSelectionChange 
     onSelectionChange(next);
   };
 
+  const handleCapture = async (screenId) => {
+    setCapturing(true);
+    setError(null);
+    try {
+      const result = await captureAppScreenshots({ screenIds: [screenId], forceLive: liveCapture });
+      const ids = (result.assets || []).map((a) => a.id);
+      if (ids.length && onSelectionChange) {
+        onSelectionChange([...new Set([...selectedIds, ...ids])]);
+      }
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCapturing(false);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this brand asset?')) return;
     try {
@@ -74,7 +104,7 @@ export default function BrandAssetManager({ selectedIds = [], onSelectionChange 
 
       {error && <Alert severity="error" sx={{ mb: 1 }} onClose={() => setError(null)}>{error}</Alert>}
 
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
         <TextField size="small" label="Label" value={label} onChange={(e) => setLabel(e.target.value)} sx={{ flex: 1 }} />
         <Button component="label" variant="outlined" startIcon={uploading ? <CircularProgress size={16} /> : <UploadIcon />} disabled={uploading}>
           Upload
@@ -82,12 +112,37 @@ export default function BrandAssetManager({ selectedIds = [], onSelectionChange 
         </Button>
       </Stack>
 
+      {catalog.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+            Capture real SoldiKeeper UI {liveCapture ? '(live app)' : '(catalog fallback — set MEDIA_DEMO_EMAIL on server for live)'}
+          </Typography>
+          <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.75 }}>
+            {catalog.map((screen) => (
+              <Button
+                key={screen.id}
+                size="small"
+                variant="outlined"
+                disabled={capturing}
+                startIcon={capturing ? <CircularProgress size={14} /> : <ScreenshotMonitorIcon />}
+                onClick={() => handleCapture(screen.id)}
+                sx={{ textTransform: 'none' }}
+              >
+                {screen.label}
+              </Button>
+            ))}
+          </Stack>
+        </Box>
+      )}
+
       {loading ? (
         <Box sx={{ textAlign: 'center', py: 2 }}><CircularProgress size={22} /></Box>
       ) : (
         <Stack spacing={1}>
           {assets.length === 0 && (
-            <Typography variant="body2" color="text.secondary">Upload app screenshots to include them in generated media.</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Capture from the app above, or upload screenshots — otherwise Media Studio auto-captures matching screens when you generate.
+            </Typography>
           )}
           {assets.map((a) => {
             const selected = selectedIds.includes(a.id);
