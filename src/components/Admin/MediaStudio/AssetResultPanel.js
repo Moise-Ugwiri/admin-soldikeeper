@@ -90,12 +90,18 @@ export default function AssetResultPanel({ job, error, onCreateAnother, onJobUpd
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
             {scenes.map((scene, i) => (
               <Box key={i} sx={{ width: 140, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-                <ImagePreview
-                  url={sceneImageUrl(job.id, i)}
-                  authHeader={authHeader}
-                  label={`Scene ${i + 1}`}
-                  maxHeight={120}
-                />
+                {(isDone || (job.scenesReady || 0) > i) ? (
+                  <ImagePreview
+                    url={sceneImageUrl(job.id, i)}
+                    authHeader={authHeader}
+                    label={`Scene ${i + 1}`}
+                    maxHeight={120}
+                  />
+                ) : (
+                  <Box sx={{ height: 120, bgcolor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="caption" color="text.secondary">Rendering…</Typography>
+                  </Box>
+                )}
                 <Box sx={{ p: 1 }}>
                   <Typography variant="caption" display="block" noWrap>
                     {scene.overlayText || scene.instruction || `Scene ${i + 1}`}

@@ -258,9 +258,14 @@ export default function AIVideoTab() {
               <Grid item xs={12} sm={6} md={4} key={i}>
                 <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
                   <SceneImage
-                    url={jobId ? `${API_URL}/admin/ai-video/scene/${jobId}/${i}` : null}
+                    url={
+                      jobId && (isDone || (jobStatus?.scenesReady || 0) > i)
+                        ? `${API_URL}/admin/ai-video/scene/${jobId}/${i}`
+                        : null
+                    }
                     authHeader={authHeader}
                     height={120}
+                    retryWhileGenerating={isGenerating}
                   />
                   <Box sx={{ p: 1.5 }}>
                     <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>

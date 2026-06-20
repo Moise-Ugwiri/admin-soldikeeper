@@ -4,37 +4,56 @@ import { Box } from '@mui/material';
 import { Image as ImageIcon } from '@mui/icons-material';
 
 /** Fetches an authenticated scene thumbnail and displays it as a blob URL. */
-const SceneImage = ({ url, authHeader, height = 120 }) => {
+const SceneImage = ({ url, authHeader, height = 120, retryWhileGenerating = false }) => {
   const [blobUrl, setBlobUrl] = useState(null);
   const [failed, setFailed] = useState(false);
   const blobRef = useRef(null);
+  const retryRef = useRef(null);
 
   useEffect(() => {
-    if (!url) return undefined;
-    let cancelled = false;
+    if (!url) {
+      setBlobUrl(null);
+      setFailed(false);
+      return undefined;
+    }
 
-    fetch(url, { headers: authHeader })
-      .then((r) => (r.ok ? r.blob() : Promise.reject()))
-      .then((blob) => {
-        if (cancelled) return;
-        if (blobRef.current) URL.revokeObjectURL(blobRef.current);
-        const u = URL.createObjectURL(blob);
-        blobRef.current = u;
-        setBlobUrl(u);
-        setFailed(false);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
+    let cancelled = false;
+    let attempt = 0;
+
+    const load = () => {
+      fetch(url, { headers: authHeader })
+        .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+        .then((blob) => {
+          if (cancelled) return;
+          if (blobRef.current) URL.revokeObjectURL(blobRef.current);
+          const u = URL.createObjectURL(blob);
+          blobRef.current = u;
+          setBlobUrl(u);
+          setFailed(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (retryWhileGenerating && attempt < 12) {
+            attempt += 1;
+            retryRef.current = setTimeout(load, 2000);
+            return;
+          }
+          setFailed(true);
+          setBlobUrl(null);
+        });
+    };
+
+    load();
 
     return () => {
       cancelled = true;
+      if (retryRef.current) clearTimeout(retryRef.current);
       if (blobRef.current) {
         URL.revokeObjectURL(blobRef.current);
         blobRef.current = null;
       }
     };
-  }, [url, authHeader]);
+  }, [url, authHeader, retryWhileGenerating]);
 
   if (blobUrl) {
     return (
