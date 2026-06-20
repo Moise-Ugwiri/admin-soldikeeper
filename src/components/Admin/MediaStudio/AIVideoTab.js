@@ -53,8 +53,9 @@ export default function AIVideoTab() {
         return r.json();
       })
       .then((data) => {
-        setMusicTracks(data.tracks || []);
-        if (data.tracks?.length > 0) setMusicTrack(data.tracks[0]);
+        const catalog = data.catalog || (data.tracks || []).map((f) => ({ filename: f, label: f }));
+        setMusicTracks(catalog);
+        if (catalog.length > 0) setMusicTrack(catalog[0].filename);
       })
       .catch((err) => setError(err.message));
   }, []);
@@ -204,9 +205,10 @@ export default function AIVideoTab() {
             <FormControl fullWidth size="small">
               <InputLabel>Music</InputLabel>
               <Select value={musicTrack} label="Music" onChange={(e) => setMusicTrack(e.target.value)} disabled={isGenerating}>
-                <MenuItem value="">None</MenuItem>
                 {musicTracks.map((t) => (
-                  <MenuItem key={t} value={t}>{t.replace('.mp3', '').replace(/-/g, ' ')}</MenuItem>
+                  <MenuItem key={t.filename} value={t.filename}>
+                    {t.label || t.filename.replace('.mp3', '').replace(/-/g, ' ')}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>

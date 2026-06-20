@@ -79,6 +79,13 @@ export async function uploadBrandAsset(file, meta = {}) {
   return data.asset;
 }
 
+export async function fetchMusicTracks() {
+  const res = await fetch(`${getApiUrl()}/admin/media/music`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load music tracks');
+  return data.catalog || (data.tracks || []).map((filename) => ({ filename, label: filename }));
+}
+
 export async function fetchScreenshotCatalog() {
   const res = await fetch(`${getApiUrl()}/admin/media/screenshots/catalog`, { headers: getAuthHeader() });
   const data = await res.json();

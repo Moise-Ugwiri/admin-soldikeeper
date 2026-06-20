@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box, Paper, Typography, Chip, Stack, FormControl, InputLabel, Select, MenuItem, TextField, Alert,
 } from '@mui/material';
+import { fetchMusicTracks } from './api';
 
 const ASSET_LABELS = {
   video_remotion: 'Animated video (Remotion)',
@@ -13,12 +14,24 @@ const ASSET_LABELS = {
 };
 
 export default function PlanReviewCard({ plan, onChange, fromFallback }) {
+  const [musicTracks, setMusicTracks] = useState([]);
+
+  useEffect(() => {
+    if (plan?.pipeline === 'ai_video') {
+      fetchMusicTracks().then(setMusicTracks).catch(() => {});
+    }
+  }, [plan?.pipeline]);
+
   if (!plan) return null;
 
   const update = (patch) => onChange({ ...plan, ...patch });
   const updateStatic = (patch) => onChange({
     ...plan,
     staticSpec: { ...plan.staticSpec, ...patch },
+  });
+  const updateAiVideo = (patch) => onChange({
+    ...plan,
+    aiVideoSpec: { ...plan.aiVideoSpec, ...patch },
   });
 
   return (
@@ -51,7 +64,7 @@ export default function PlanReviewCard({ plan, onChange, fromFallback }) {
               label="Composition"
               onChange={(e) => update({ compositionId: e.target.value })}
             >
-              {['TikTok', 'Instagram', 'YouTube', 'LinkedIn', 'FeatureReceipt', 'FeatureBudget', 'FeatureSplit'].map((c) => (
+              {['TikTok', 'Instagram', 'YouTube', 'LinkedIn', 'FeatureReceipt', 'FeatureBudget', 'FeatureSplit', 'TutorialWalkthrough', 'FeatureQuickTip'].map((c) => (
                 <MenuItem key={c} value={c}>{c}</MenuItem>
               ))}
             </Select>
@@ -87,14 +100,45 @@ export default function PlanReviewCard({ plan, onChange, fromFallback }) {
       )}
 
       {plan.pipeline === 'ai_video' && (
-        <Box>
-          <Typography variant="body2" sx={{ mb: 1 }}>
+        <Stack spacing={2}>
+          <Typography variant="body2">
             <strong>Brief:</strong> {plan.aiVideoSpec?.brief || plan.staticSpec?.headline}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {plan.aiVideoSpec?.sceneCount || 5} scenes · {plan.aiVideoSpec?.totalDuration || 30}s · {plan.aiVideoSpec?.contentType}
+          <Typography variant="caption" color="text.secondary" display="block">
+            Dynamic word-by-word captions · crossfade transitions · background music
           </Typography>
-        </Box>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip size="small" label={`${plan.aiVideoSpec?.sceneCount || 5} scenes`} />
+            <Chip size="small" label={`${plan.aiVideoSpec?.totalDuration || 30}s`} />
+            <Chip size="small" label={plan.aiVideoSpec?.contentType || 'promotional'} />
+          </Stack>
+          <FormControl size="small" fullWidth>
+            <InputLabel>Background music</InputLabel>
+            <Select
+              value={plan.aiVideoSpec?.musicTrack || ''}
+              label="Background music"
+              onChange={(e) => updateAiVideo({ musicTrack: e.target.value })}
+            >
+              {musicTracks.map((t) => (
+                <MenuItem key={t.filename} value={t.filename}>
+                  {t.label || t.filename}{t.mood ? ` · ${t.mood}` : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" fullWidth>
+            <InputLabel>Content type</InputLabel>
+            <Select
+              value={plan.aiVideoSpec?.contentType || 'promotional'}
+              label="Content type"
+              onChange={(e) => updateAiVideo({ contentType: e.target.value })}
+            >
+              <MenuItem value="promotional">Promotional</MenuItem>
+              <MenuItem value="educational">Educational</MenuItem>
+              <MenuItem value="feature_tutorial">Feature tutorial</MenuItem>
+            </Select>
+          </FormControl>
+        </Stack>
       )}
     </Paper>
   );
