@@ -8,6 +8,8 @@ import { FeatureReceipt }   from './compositions/FeatureReceipt.jsx';
 import { FeatureBudget }    from './compositions/FeatureBudget.jsx';
 import { FeatureSplit }     from './compositions/FeatureSplit.jsx';
 import { LinkedInPromo }    from './compositions/LinkedInPromo.jsx';
+import { TutorialWalkthrough } from './compositions/TutorialWalkthrough.jsx';
+import { FeatureQuickTip }  from './compositions/FeatureQuickTip.jsx';
 import { DEFAULT_PROPS }    from './defaultProps.js';
 
 export const RemotionRoot = () => (
@@ -90,6 +92,28 @@ export const RemotionRoot = () => (
       fps={30}
       width={1920}
       height={1080}
+      defaultProps={DEFAULT_PROPS}
+    />
+
+    {/* Tutorial Walkthrough — 1920×1080 — 45s */}
+    <Composition
+      id="TutorialWalkthrough"
+      component={TutorialWalkthrough}
+      durationInFrames={1350}
+      fps={30}
+      width={1920}
+      height={1080}
+      defaultProps={DEFAULT_PROPS}
+    />
+
+    {/* Feature Quick Tip — 1080×1920 — 20s */}
+    <Composition
+      id="FeatureQuickTip"
+      component={FeatureQuickTip}
+      durationInFrames={600}
+      fps={30}
+      width={1080}
+      height={1920}
       defaultProps={DEFAULT_PROPS}
     />
   </>

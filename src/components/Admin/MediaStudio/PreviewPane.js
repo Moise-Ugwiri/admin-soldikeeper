@@ -11,6 +11,8 @@ const TEMPLATE_META = {
   FeatureReceipt:{ orientation: 'horizontal',  accent: '#10b981', label: 'Receipt Scan · 16:9', icon: '🧾' },
   FeatureBudget: { orientation: 'horizontal',  accent: '#6366f1', label: 'Budget · 16:9',     icon: '💰' },
   FeatureSplit:  { orientation: 'horizontal',  accent: '#f59e0b', label: 'SplitSmart · 16:9', icon: '🤝' },
+  TutorialWalkthrough: { orientation: 'horizontal', accent: '#6366f1', label: 'Tutorial · 16:9', icon: '📚' },
+  FeatureQuickTip: { orientation: 'vertical', accent: '#f59e0b', label: 'Quick Tip · 9:16', icon: '💡' },
 };
 
 const FRAME_SIZES = {

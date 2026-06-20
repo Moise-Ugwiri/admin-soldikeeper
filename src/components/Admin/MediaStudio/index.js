@@ -28,7 +28,19 @@ const DEFAULT_PROPS = {
   contentType: 'promotional',
 };
 
+const readPrefill = () => {
+  try {
+    const raw = sessionStorage.getItem('mediaStudioPrefill');
+    if (!raw) return null;
+    sessionStorage.removeItem('mediaStudioPrefill');
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
 export default function MediaStudio() {
+  const [prefill] = useState(() => readPrefill());
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [advancedTab, setAdvancedTab] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState('TikTok');
@@ -55,7 +67,7 @@ export default function MediaStudio() {
 
       <PipelineHealthBanner />
 
-      <CreateWizard onOpenLibrary={() => setLibraryOpen(true)} />
+      <CreateWizard onOpenLibrary={() => setLibraryOpen(true)} initialPrefill={prefill} />
 
       <Accordion sx={{ mt: 3 }} defaultExpanded={false}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>

@@ -10,6 +10,8 @@ const TEMPLATES = [
   { id: 'FeatureReceipt', platform: 'Receipts',   duration: '25s', resolution: '1920×1080', color: '#00897B', emoji: '📸', orientation: 'horizontal' },
   { id: 'FeatureBudget',  platform: 'Budgets',    duration: '25s', resolution: '1920×1080', color: '#00897B', emoji: '🎯', orientation: 'horizontal' },
   { id: 'FeatureSplit',   platform: 'Split Bills',duration: '25s', resolution: '1920×1080', color: '#00897B', emoji: '🤝', orientation: 'horizontal' },
+  { id: 'TutorialWalkthrough', platform: 'Tutorial', duration: '45s', resolution: '1920×1080', color: '#6366F1', emoji: '📚', orientation: 'horizontal' },
+  { id: 'FeatureQuickTip', platform: 'Quick Tip', duration: '20s', resolution: '1080×1920', color: '#F59E0B', emoji: '💡', orientation: 'vertical' },
 ];
 
 const TemplatePicker = ({ selected, onSelect }) => {

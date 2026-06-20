@@ -1,13 +1,21 @@
-import React from 'react';
-import { Box, Button, Stack, Typography, Alert, LinearProgress, Chip } from '@mui/material';
+import React, { useState } from 'react';
+import {
+  Box, Button, Stack, Typography, Alert, LinearProgress, Chip, IconButton, Tooltip,
+} from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ReplayIcon from '@mui/icons-material/Replay';
+import SubtitlesIcon from '@mui/icons-material/Subtitles';
 import VideoPreview from './VideoPreview';
 import ImagePreview from './ImagePreview';
-import { getAuthHeader, jobDownloadUrl } from './api';
+import {
+  getAuthHeader, jobDownloadUrl, regenerateScene, sceneImageUrl, captionsDownloadUrl,
+} from './api';
 
-export default function AssetResultPanel({ job, error, onCreateAnother }) {
+export default function AssetResultPanel({ job, error, onCreateAnother, onJobUpdate }) {
   const authHeader = getAuthHeader();
+  const [regenIndex, setRegenIndex] = useState(null);
+  const [regenError, setRegenError] = useState(null);
 
   if (error) {
     return <Alert severity="error">{error}</Alert>;
@@ -19,7 +27,34 @@ export default function AssetResultPanel({ job, error, onCreateAnother }) {
   const isDone = job.status === 'done';
   const isFailed = job.status === 'failed';
   const isImage = job.mimeType?.startsWith('image/') || ['poster', 'flyer', 'banner', 'thumbnail'].includes(job.assetType);
+  const isAIVideo = job.pipeline === 'ai_video';
   const downloadUrl = isDone ? jobDownloadUrl(job.id) : null;
+  const scenes = job.storyboard?.scenes || [];
+
+  const handleRegenerate = async (index) => {
+    setRegenIndex(index);
+    setRegenError(null);
+    try {
+      await regenerateScene(job.id, index);
+      onJobUpdate?.();
+    } catch (err) {
+      setRegenError(err.message);
+    } finally {
+      setRegenIndex(null);
+    }
+  };
+
+  const downloadCaptions = async () => {
+    const url = captionsDownloadUrl(job.id);
+    const res = await fetch(url, { headers: authHeader });
+    if (!res.ok) throw new Error('Captions not available');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = job.srtFilename || `${job.id}.srt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
   return (
     <Box>
@@ -34,6 +69,10 @@ export default function AssetResultPanel({ job, error, onCreateAnother }) {
         <Alert severity="error" sx={{ mb: 2 }}>{job.error || 'Generation failed'}</Alert>
       )}
 
+      {regenError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRegenError(null)}>{regenError}</Alert>
+      )}
+
       {isDone && (
         <>
           <Chip label="Ready" color="success" size="small" sx={{ mb: 2 }} />
@@ -45,15 +84,46 @@ export default function AssetResultPanel({ job, error, onCreateAnother }) {
         </>
       )}
 
+      {isAIVideo && scenes.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Storyboard scenes</Typography>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            {scenes.map((scene, i) => (
+              <Box key={i} sx={{ width: 140, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+                <ImagePreview
+                  url={sceneImageUrl(job.id, i)}
+                  authHeader={authHeader}
+                  label={`Scene ${i + 1}`}
+                  maxHeight={120}
+                />
+                <Box sx={{ p: 1 }}>
+                  <Typography variant="caption" display="block" noWrap>
+                    {scene.overlayText || scene.instruction || `Scene ${i + 1}`}
+                  </Typography>
+                  {isDone && (
+                    <Tooltip title="Regenerate this scene">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRegenerate(i)}
+                        disabled={regenIndex === i || isActive}
+                      >
+                        <ReplayIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      )}
+
       <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
         {isDone && (
           <Button
             variant="contained"
             startIcon={<DownloadIcon />}
-            component="a"
-            href={downloadUrl}
-            onClick={(e) => {
-              e.preventDefault();
+            onClick={() => {
               fetch(downloadUrl, { headers: authHeader })
                 .then((r) => r.blob())
                 .then((blob) => {
@@ -66,6 +136,11 @@ export default function AssetResultPanel({ job, error, onCreateAnother }) {
             }}
           >
             Download
+          </Button>
+        )}
+        {isDone && isAIVideo && (
+          <Button variant="outlined" startIcon={<SubtitlesIcon />} onClick={downloadCaptions}>
+            Download SRT
           </Button>
         )}
         <Button variant="outlined" startIcon={<RefreshIcon />} onClick={onCreateAnother}>

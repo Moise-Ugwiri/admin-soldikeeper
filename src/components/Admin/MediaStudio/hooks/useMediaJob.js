@@ -39,5 +39,21 @@ export default function useMediaJob(jobId) {
     return () => stopPolling();
   }, [jobId, stopPolling]);
 
-  return { job, error, isActive: job && ['queued', 'rendering'].includes(job.status) };
+  const refetch = useCallback(async () => {
+    if (!jobId) return;
+    try {
+      const data = await getMediaJob(jobId);
+      setJob(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [jobId]);
+
+  return {
+    job,
+    error,
+    refetch,
+    isActive: job && ['queued', 'rendering'].includes(job.status),
+  };
 }

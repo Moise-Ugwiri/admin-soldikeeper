@@ -569,6 +569,17 @@ const AdminDashboard = () => {
   // Flat list of all tabs for index-based access
   const tabs = useMemo(() => tabSections.flatMap(s => s.tabs), [tabSections]);
 
+  useEffect(() => {
+    const onNavigateTab = (event) => {
+      const tabLabel = event?.detail?.tabLabel;
+      if (!tabLabel) return;
+      const idx = tabs.findIndex((t) => t.label === tabLabel || t.shortLabel === tabLabel);
+      if (idx >= 0) setActiveTab(idx);
+    };
+    window.addEventListener('admin-navigate-tab', onNavigateTab);
+    return () => window.removeEventListener('admin-navigate-tab', onNavigateTab);
+  }, [tabs]);
+
   // Quick stats for header
   const quickStats = useMemo(() => [
     {

@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import { draftCampaign } from '../../services/growthAPI';
 
 const AUDIENCES = ['free users', 'trial users about to expire', 'inactive premium users', 'standard users for upsell', 'cancelled users for win-back', 'all users'];
@@ -45,6 +46,23 @@ export default function CampaignDrafter() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleGenerateVisual = () => {
+    if (!result) return;
+    const prompt = [
+      `Campaign visual for: ${result.headline || result.subject || objective}`,
+      result.previewText ? `Preview: ${result.previewText}` : '',
+      result.body ? String(result.body).slice(0, 300) : '',
+      result.cta ? `CTA: ${result.cta}` : '',
+      `Audience: ${result.audience || audience}. Tone: ${tone}.`,
+    ].filter(Boolean).join(' ');
+
+    sessionStorage.setItem('mediaStudioPrefill', JSON.stringify({
+      prompt,
+      purpose: 'marketing',
+    }));
+    window.dispatchEvent(new CustomEvent('admin-navigate-tab', { detail: { tabLabel: '🎬 Media' } }));
   };
 
   return (
@@ -96,7 +114,18 @@ export default function CampaignDrafter() {
 
       {result && (
         <Paper sx={{ p: 3, mt: 2, background: alpha('#fff', 0.03) }}>
-          <Typography variant="h6" gutterBottom fontWeight="bold">Generated Campaign</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="h6" fontWeight="bold">Generated Campaign</Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<VideoLibraryIcon />}
+              onClick={handleGenerateVisual}
+              sx={{ borderColor: '#10b981', color: '#10b981' }}
+            >
+              Generate visual in Media Studio
+            </Button>
+          </Box>
           <Grid container spacing={2}>
             {[
               { label: 'Subject Line (A)', value: result.subject },

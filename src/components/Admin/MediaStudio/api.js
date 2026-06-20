@@ -90,6 +90,35 @@ export async function deleteBrandAsset(id) {
   }
 }
 
+export async function planFromDocument(body) {
+  const res = await fetch(`${getApiUrl()}/admin/media/plan-from-document`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Plan from document failed (${res.status})`);
+  return data;
+}
+
+export async function regenerateScene(jobId, sceneIndex) {
+  const res = await fetch(`${getApiUrl()}/admin/media/ai-video/${jobId}/regenerate-scene/${sceneIndex}`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Scene regeneration failed (${res.status})`);
+  return data;
+}
+
+export function sceneImageUrl(jobId, index) {
+  return `${getApiUrl()}/admin/media/ai-video/${jobId}/scene/${index}`;
+}
+
+export function captionsDownloadUrl(jobId) {
+  return `${getApiUrl()}/admin/media/jobs/${jobId}/captions.srt`;
+}
+
 export async function fetchThumbnail(compositionId, inputProps, frame = 0) {
   const res = await fetch(`${getApiUrl()}/admin/media/thumbnail`, {
     method: 'POST',

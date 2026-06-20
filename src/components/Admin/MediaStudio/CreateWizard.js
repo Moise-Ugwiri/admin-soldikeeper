@@ -14,10 +14,10 @@ import AssetResultPanel from './AssetResultPanel';
 const STEPS = ['Describe', 'Review plan', 'Generate', 'Result'];
 const PURPOSES = ['marketing', 'educational', 'operational'];
 
-export default function CreateWizard({ onOpenLibrary }) {
+export default function CreateWizard({ onOpenLibrary, initialPrefill }) {
   const [step, setStep] = useState(0);
-  const [prompt, setPrompt] = useState('');
-  const [purpose, setPurpose] = useState('marketing');
+  const [prompt, setPrompt] = useState(initialPrefill?.prompt || '');
+  const [purpose, setPurpose] = useState(initialPrefill?.purpose || 'marketing');
   const [plan, setPlan] = useState(null);
   const [planMeta, setPlanMeta] = useState(null);
   const [brandAssetIds, setBrandAssetIds] = useState([]);
@@ -25,7 +25,14 @@ export default function CreateWizard({ onOpenLibrary }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const { job, error: jobError } = useMediaJob(step >= 2 ? jobId : null);
+  const { job, error: jobError, refetch: refetchJob } = useMediaJob(step >= 2 ? jobId : null);
+
+  React.useEffect(() => {
+    if (initialPrefill?.prompt) {
+      setPrompt(initialPrefill.prompt);
+      if (initialPrefill.purpose) setPurpose(initialPrefill.purpose);
+    }
+  }, [initialPrefill]);
 
   const handlePlan = async () => {
     if (prompt.trim().length < 8) return;
@@ -161,6 +168,7 @@ export default function CreateWizard({ onOpenLibrary }) {
             job={job}
             error={jobError}
             onCreateAnother={reset}
+            onJobUpdate={refetchJob}
           />
           {step === 3 && (
             <Button sx={{ mt: 2 }} onClick={onOpenLibrary}>Open Asset Library</Button>
