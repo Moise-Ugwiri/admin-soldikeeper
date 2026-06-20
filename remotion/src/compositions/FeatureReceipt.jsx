@@ -11,11 +11,11 @@ import React from 'react';
 import { useCurrentFrame, Audio, staticFile, interpolate } from 'remotion';
 import { GradientBg } from '../components/GradientBg.jsx';
 import { Logo } from '../components/Logo.jsx';
-import { PhoneMockup } from '../components/PhoneMockup.jsx';
+import { PhoneMockup, PhoneScreen } from '../components/PhoneMockup.jsx';
 import { BRAND, FONT, EASE } from '../theme.js';
 import { fadeUp, scaleIn, slideLeft, slideRight, counter, barWidth } from '../animations.js';
 import { AUDIO_ENABLED, AUDIO } from '../audioConfig.js';
-import { DEFAULT_PROPS } from '../defaultProps.js';
+import { resolveBrandProps, toneDelay } from '../brandUtils.js';
 
 const SCENE = { PAIN: 0, DEMO: 120, STATS: 360, CTA: 570 };
 
@@ -50,14 +50,10 @@ const ReceiptScreen = ({ frame, scale = 1 }) => {
   );
 };
 
-export const FeatureReceipt = ({ hook, subtitle, features, ctaText, ctaUrl, accentColor, theme, tone } = {}) => {
+export const FeatureReceipt = (props = {}) => {
   const frame = useCurrentFrame();
-
-  const _hook = hook || DEFAULT_PROPS.hook;
-  const _subtitle = subtitle || DEFAULT_PROPS.subtitle;
-  const _features = features || DEFAULT_PROPS.features;
-  const _ctaText = ctaText || DEFAULT_PROPS.ctaText;
-  const _ctaUrl = ctaUrl || DEFAULT_PROPS.ctaUrl;
+  const brand = resolveBrandProps({ theme: 'blue', ...props });
+  const { hook: _hook, subtitle: _subtitle, features: _features, ctaText: _ctaText, ctaUrl: _ctaUrl, accentColor, themeVariant, tone, screenshots } = brand;
 
   const scene = frame < SCENE.DEMO ? 'PAIN'
     : frame < SCENE.STATS ? 'DEMO'
@@ -69,7 +65,7 @@ export const FeatureReceipt = ({ hook, subtitle, features, ctaText, ctaUrl, acce
   return (
     <div style={{ width: 1920, height: 1080, position: 'relative', overflow: 'hidden', background: BRAND.darkest }}>
       {AUDIO_ENABLED && <Audio src={staticFile(AUDIO.featureSting)} volume={0.7} />}
-      <GradientBg variant="blue" />
+      <GradientBg variant={themeVariant === 'green' ? 'blue' : themeVariant} />
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 120px', gap: 80 }}>
 
@@ -102,7 +98,7 @@ export const FeatureReceipt = ({ hook, subtitle, features, ctaText, ctaUrl, acce
                   <span style={{ color: BRAND.greenLight, fontWeight: FONT.weight.bold, fontSize: 28 }}>98%</span>
                 </div>
                 <div style={{ height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 6, width: 480, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', borderRadius: 6, background: BRAND.btnGreen, width: barWidth(frame, SCENE.DEMO + 30, SCENE.DEMO + 100, 98) }} />
+                  <div style={{ height: '100%', borderRadius: 6, background: accentColor, width: barWidth(frame, SCENE.DEMO + 30, SCENE.DEMO + 100, 98) }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, fontFamily: FONT.sans }}>
                   <span style={{ color: BRAND.textMuted, fontSize: 24 }}>Speed</span>
@@ -112,7 +108,9 @@ export const FeatureReceipt = ({ hook, subtitle, features, ctaText, ctaUrl, acce
             </div>
             <div style={{ ...slideRight(sceneFrame, 12, 80), flexShrink: 0 }}>
               <PhoneMockup width={300} height={590} scale={1.1}>
-                <ReceiptScreen frame={sceneFrame - 20} scale={1.1} />
+                {screenshots?.some((s) => s.slot === 'phoneScreen' && s.url)
+                  ? <PhoneScreen screenshots={screenshots} scale={1.1} />
+                  : <ReceiptScreen frame={sceneFrame - 20} scale={1.1} />}
               </PhoneMockup>
             </div>
           </>
@@ -153,7 +151,7 @@ export const FeatureReceipt = ({ hook, subtitle, features, ctaText, ctaUrl, acce
             <h2 style={{ ...fadeUp(sceneFrame, 14), margin: '0 0 40px', fontSize: 68, fontWeight: FONT.weight.black, color: BRAND.white }}>
               Never manually enter a receipt again.
             </h2>
-            <div style={{ ...scaleIn(sceneFrame, 28), display: 'inline-block', background: BRAND.btnGreen, borderRadius: 60, padding: '22px 64px' }}>
+            <div style={{ ...scaleIn(sceneFrame, toneDelay(28, tone)), display: 'inline-block', background: accentColor, borderRadius: 60, padding: '22px 64px' }}>
               <span style={{ fontSize: 38, fontWeight: FONT.weight.bold, color: BRAND.white }}>{_ctaText} — {_ctaUrl.replace('https://', '')}</span>
             </div>
           </div>

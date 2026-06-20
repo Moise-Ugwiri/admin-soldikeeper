@@ -15,11 +15,11 @@ import React from 'react';
 import { useCurrentFrame, Audio, staticFile } from 'remotion';
 import { GradientBg } from '../components/GradientBg.jsx';
 import { Logo } from '../components/Logo.jsx';
-import { PhoneMockup, DashboardScreen } from '../components/PhoneMockup.jsx';
+import { PhoneMockup, PhoneScreen } from '../components/PhoneMockup.jsx';
 import { BRAND, FONT } from '../theme.js';
 import { fadeUp, scaleIn, slideLeft } from '../animations.js';
 import { AUDIO_ENABLED, AUDIO } from '../audioConfig.js';
-import { DEFAULT_PROPS } from '../defaultProps.js';
+import { resolveBrandProps, toneDelay } from '../brandUtils.js';
 
 const SCENE = { HOOK: 0, PROBLEM: 90, RECEIPT: 240, BUDGET: 420, SPLIT: 600, CTA: 750 };
 
@@ -39,11 +39,11 @@ const HitText = ({ children, frame, delay = 0, size = 96, color = BRAND.white })
   </div>
 );
 
-const FeatureCard = ({ icon, title, frame, delay = 0 }) => (
+const FeatureCard = ({ icon, title, frame, delay = 0, accentColor }) => (
   <div style={{
     ...fadeUp(frame, delay),
-    background: 'rgba(16,185,129,0.15)',
-    border: '2px solid rgba(16,185,129,0.4)',
+    background: `${accentColor}26`,
+    border: `2px solid ${accentColor}66`,
     borderRadius: 32,
     padding: '32px 40px',
     display: 'flex', alignItems: 'center', gap: 24,
@@ -54,14 +54,10 @@ const FeatureCard = ({ icon, title, frame, delay = 0 }) => (
   </div>
 );
 
-export const TikTokShort = ({ hook, subtitle, features, ctaText, ctaUrl, accentColor, theme, tone } = {}) => {
+export const TikTokShort = (props = {}) => {
   const frame = useCurrentFrame();
-
-  const _hook = hook || DEFAULT_PROPS.hook;
-  const _subtitle = subtitle || DEFAULT_PROPS.subtitle;
-  const _features = features || DEFAULT_PROPS.features;
-  const _ctaText = ctaText || DEFAULT_PROPS.ctaText;
-  const _ctaUrl = ctaUrl || DEFAULT_PROPS.ctaUrl;
+  const brand = resolveBrandProps(props);
+  const { hook: _hook, subtitle: _subtitle, features: _features, ctaText: _ctaText, ctaUrl: _ctaUrl, accentColor, themeVariant, tone, screenshots } = brand;
 
   const scene = frame < SCENE.PROBLEM ? 'HOOK'
     : frame < SCENE.RECEIPT ? 'PROBLEM'
@@ -75,7 +71,7 @@ export const TikTokShort = ({ hook, subtitle, features, ctaText, ctaUrl, accentC
   return (
     <div style={{ width: 1080, height: 1920, position: 'relative', overflow: 'hidden', background: BRAND.darkest }}>
       {AUDIO_ENABLED && <Audio src={staticFile(AUDIO.shortHook)} volume={0.8} />}
-      <GradientBg variant="green" />
+      <GradientBg variant={themeVariant} />
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 60px', gap: 40 }}>
 
@@ -83,7 +79,7 @@ export const TikTokShort = ({ hook, subtitle, features, ctaText, ctaUrl, accentC
           <>
             <HitText frame={sceneFrame} delay={0} size={88}>💰 {_hook}</HitText>
             <div style={{ ...fadeUp(sceneFrame, 20), marginTop: 16 }}>
-              <HitText frame={sceneFrame} delay={20} size={52} color={BRAND.green}>There's a smarter way.</HitText>
+              <HitText frame={sceneFrame} delay={toneDelay(20, tone)} size={52} color={accentColor}>There's a smarter way.</HitText>
             </div>
           </>
         )}
@@ -105,13 +101,13 @@ export const TikTokShort = ({ hook, subtitle, features, ctaText, ctaUrl, accentC
 
         {scene === 'RECEIPT' && (
           <>
-            <FeatureCard icon="📸" title="Scan any receipt — instantly" frame={sceneFrame} />
-            <div style={{ ...scaleIn(sceneFrame, 16) }}>
+            <FeatureCard icon="📸" title="Scan any receipt — instantly" frame={sceneFrame} accentColor={accentColor} />
+            <div style={{ ...scaleIn(sceneFrame, toneDelay(16, tone)) }}>
               <PhoneMockup width={280} height={560} scale={1}>
-                <DashboardScreen scale={1} />
+                <PhoneScreen screenshots={screenshots} scale={1} />
               </PhoneMockup>
             </div>
-            <div style={{ ...fadeUp(sceneFrame, 30), fontFamily: FONT.sans, fontSize: 36, color: BRAND.green, fontWeight: FONT.weight.semibold, textAlign: 'center' }}>
+            <div style={{ ...fadeUp(sceneFrame, toneDelay(30, tone)), fontFamily: FONT.sans, fontSize: 36, color: accentColor, fontWeight: FONT.weight.semibold, textAlign: 'center' }}>
               AI reads it in under 3 seconds ⚡
             </div>
           </>
@@ -119,7 +115,7 @@ export const TikTokShort = ({ hook, subtitle, features, ctaText, ctaUrl, accentC
 
         {scene === 'BUDGET' && (
           <>
-            <FeatureCard icon="🎯" title="Smart budgets that adapt" frame={sceneFrame} />
+            <FeatureCard icon="🎯" title="Smart budgets that adapt" frame={sceneFrame} accentColor={accentColor} />
             <div style={{ ...fadeUp(sceneFrame, 14), fontFamily: FONT.sans, fontSize: 36, color: BRAND.textMuted, textAlign: 'center', lineHeight: 1.4, maxWidth: 700 }}>
               Set once — SoldiKeeper rolls over, adjusts, and alerts you automatically.
             </div>
@@ -128,7 +124,7 @@ export const TikTokShort = ({ hook, subtitle, features, ctaText, ctaUrl, accentC
 
         {scene === 'SPLIT' && (
           <>
-            <FeatureCard icon="🤝" title="Split bills without fights" frame={sceneFrame} />
+            <FeatureCard icon="🤝" title="Split bills without fights" frame={sceneFrame} accentColor={accentColor} />
             <div style={{ ...fadeUp(sceneFrame, 14), fontFamily: FONT.sans, fontSize: 36, color: BRAND.textMuted, textAlign: 'center', lineHeight: 1.4, maxWidth: 700 }}>
               Add people, assign costs, settle with one tap.
             </div>
@@ -140,10 +136,10 @@ export const TikTokShort = ({ hook, subtitle, features, ctaText, ctaUrl, accentC
             <div style={{ ...scaleIn(sceneFrame, 0) }}>
               <Logo size={56} fontSize={52} center />
             </div>
-            <HitText frame={sceneFrame} delay={14} size={88} color={BRAND.greenLight}>Free to download.</HitText>
-            <HitText frame={sceneFrame} delay={22} size={88}>Start saving today.</HitText>
-            <div style={{ ...slideLeft(sceneFrame, 34), marginTop: 12 }}>
-              <div style={{ background: BRAND.btnGreen, borderRadius: 60, padding: '24px 64px' }}>
+            <HitText frame={sceneFrame} delay={toneDelay(14, tone)} size={88} color={accentColor}>Free to download.</HitText>
+            <HitText frame={sceneFrame} delay={toneDelay(22, tone)} size={88}>Start saving today.</HitText>
+            <div style={{ ...slideLeft(sceneFrame, toneDelay(34, tone)), marginTop: 12 }}>
+              <div style={{ background: accentColor, borderRadius: 60, padding: '24px 64px' }}>
                 <span style={{ fontFamily: FONT.sans, fontSize: 44, fontWeight: FONT.weight.bold, color: BRAND.white }}>
                   🔗 {_ctaUrl.replace('https://', '')}
                 </span>

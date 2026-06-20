@@ -15,11 +15,11 @@ import React from 'react';
 import { useCurrentFrame, useVideoConfig, Audio, staticFile, interpolate } from 'remotion';
 import { GradientBg } from '../components/GradientBg.jsx';
 import { Logo } from '../components/Logo.jsx';
-import { PhoneMockup, DashboardScreen } from '../components/PhoneMockup.jsx';
+import { PhoneMockup, PhoneScreen } from '../components/PhoneMockup.jsx';
 import { BRAND, FONT, EASE } from '../theme.js';
 import { fadeUp, scaleIn, slideLeft, slideRight, springIn, counter, barWidth } from '../animations.js';
 import { AUDIO_ENABLED, AUDIO } from '../audioConfig.js';
-import { DEFAULT_PROPS } from '../defaultProps.js';
+import { resolveBrandProps, toneDelay } from '../brandUtils.js';
 
 const SCENE = { HOOK: 0, PROBLEM: 180, SOLUTION: 420, RECEIPT: 660, BUDGET: 900, SPLIT: 1140, PROOF: 1380, CTA: 1620 };
 
@@ -57,7 +57,7 @@ const BigStat = ({ value, label, frame, delay = 0 }) => (
   </div>
 );
 
-const FeatureSlide = ({ icon, title, body, frame, sceneStart, bgVariant = 'green' }) => {
+const FeatureSlide = ({ icon, title, body, frame, sceneStart, bgVariant = 'green', screenshots = [] }) => {
   const local = frame - sceneStart;
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center' }}>
@@ -72,7 +72,7 @@ const FeatureSlide = ({ icon, title, body, frame, sceneStart, bgVariant = 'green
         {/* Right: phone */}
         <div style={{ ...slideRight(local, 15, 80), flexShrink: 0 }}>
           <PhoneMockup width={300} height={590} scale={1.1}>
-            <DashboardScreen scale={1.1} />
+            <PhoneScreen screenshots={screenshots} scale={1.1} />
           </PhoneMockup>
         </div>
       </div>
@@ -80,15 +80,11 @@ const FeatureSlide = ({ icon, title, body, frame, sceneStart, bgVariant = 'green
   );
 };
 
-export const FullPromoYouTube = ({ hook, subtitle, features, ctaText, ctaUrl, accentColor, theme, tone } = {}) => {
+export const FullPromoYouTube = (props = {}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-
-  const _hook = hook || DEFAULT_PROPS.hook;
-  const _subtitle = subtitle || DEFAULT_PROPS.subtitle;
-  const _features = features || DEFAULT_PROPS.features;
-  const _ctaText = ctaText || DEFAULT_PROPS.ctaText;
-  const _ctaUrl = ctaUrl || DEFAULT_PROPS.ctaUrl;
+  const brand = resolveBrandProps(props);
+  const { hook: _hook, subtitle: _subtitle, features: _features, ctaText: _ctaText, ctaUrl: _ctaUrl, accentColor, themeVariant, tone, screenshots } = brand;
 
   const scene = frame < SCENE.PROBLEM ? 'HOOK'
     : frame < SCENE.SOLUTION ? 'PROBLEM'
@@ -186,7 +182,7 @@ export const FullPromoYouTube = ({ hook, subtitle, features, ctaText, ctaUrl, ac
             </div>
             <div style={{ ...slideRight(sceneFrame, 12, 100), flexShrink: 0 }}>
               <PhoneMockup width={300} height={590} scale={1.15}>
-                <DashboardScreen scale={1.15} />
+                <PhoneScreen screenshots={screenshots} scale={1.15} />
               </PhoneMockup>
             </div>
           </div>
@@ -194,9 +190,9 @@ export const FullPromoYouTube = ({ hook, subtitle, features, ctaText, ctaUrl, ac
       )}
 
       {/* ── SCENE 4-6: FEATURES ── */}
-      {scene === 'RECEIPT' && <FeatureSlide icon="📸" title={_features[0] || 'Scan receipts instantly'} body="Point your camera at any receipt. AI reads it in under 3 seconds — no typing needed." frame={frame} sceneStart={SCENE.RECEIPT} bgVariant="blue" />}
-      {scene === 'BUDGET' && <FeatureSlide icon="🎯" title={_features[1] || 'Budgets that adapt to you'} body="Smart categories, rollover logic, and real-time alerts keep you on track — automatically." frame={frame} sceneStart={SCENE.BUDGET} bgVariant="violet" />}
-      {scene === 'SPLIT' && <FeatureSlide icon="🤝" title={_features[2] || 'Split bills, zero drama'} body="Shared expenses, debt simplification, settlement in one tap. Everyone stays happy." frame={frame} sceneStart={SCENE.SPLIT} bgVariant="amber" />}
+      {scene === 'RECEIPT' && <FeatureSlide icon="📸" title={_features[0] || 'Scan receipts instantly'} body="Point your camera at any receipt. AI reads it in under 3 seconds — no typing needed." frame={frame} sceneStart={SCENE.RECEIPT} bgVariant="blue" screenshots={screenshots} />}
+      {scene === 'BUDGET' && <FeatureSlide icon="🎯" title={_features[1] || 'Budgets that adapt to you'} body="Smart categories, rollover logic, and real-time alerts keep you on track — automatically." frame={frame} sceneStart={SCENE.BUDGET} bgVariant="violet" screenshots={screenshots} />}
+      {scene === 'SPLIT' && <FeatureSlide icon="🤝" title={_features[2] || 'Split bills, zero drama'} body="Shared expenses, debt simplification, settlement in one tap. Everyone stays happy." frame={frame} sceneStart={SCENE.SPLIT} bgVariant="amber" screenshots={screenshots} />}
 
       {/* ── SCENE 7: SOCIAL PROOF ── */}
       {scene === 'PROOF' && (
@@ -230,7 +226,7 @@ export const FullPromoYouTube = ({ hook, subtitle, features, ctaText, ctaUrl, ac
             <p style={{ ...fadeUp(sceneFrame, 22), margin: '0 0 48px', fontSize: 36, color: BRAND.textMuted }}>
               Available on iOS &amp; Android
             </p>
-            <div style={{ ...scaleIn(sceneFrame, 30), display: 'inline-block', background: BRAND.btnGreen, borderRadius: 60, padding: '24px 72px' }}>
+            <div style={{ ...scaleIn(sceneFrame, toneDelay(30, tone)), display: 'inline-block', background: accentColor, borderRadius: 60, padding: '24px 72px' }}>
               <span style={{ fontSize: 40, fontWeight: FONT.weight.bold, color: BRAND.white, letterSpacing: 0.5 }}>
                 {_ctaText}
               </span>

@@ -14,11 +14,11 @@ import React from 'react';
 import { useCurrentFrame, Audio, staticFile } from 'remotion';
 import { GradientBg } from '../components/GradientBg.jsx';
 import { Logo } from '../components/Logo.jsx';
-import { PhoneMockup, DashboardScreen } from '../components/PhoneMockup.jsx';
+import { PhoneMockup, PhoneScreen } from '../components/PhoneMockup.jsx';
 import { BRAND, FONT } from '../theme.js';
 import { fadeUp, scaleIn, slideLeft, slideRight } from '../animations.js';
 import { AUDIO_ENABLED, AUDIO } from '../audioConfig.js';
-import { DEFAULT_PROPS } from '../defaultProps.js';
+import { resolveBrandProps, toneDelay } from '../brandUtils.js';
 
 const SCENE = { HOOK: 0, PROBLEM: 180, PRODUCT: 420, USECASES: 720, CTA: 1080 };
 
@@ -40,14 +40,10 @@ const CredentialBadge = ({ icon, text, frame, delay }) => (
   </div>
 );
 
-export const LinkedInPromo = ({ hook, subtitle, features, ctaText, ctaUrl, accentColor, theme, tone } = {}) => {
+export const LinkedInPromo = (props = {}) => {
   const frame = useCurrentFrame();
-
-  const _hook = hook || DEFAULT_PROPS.hook;
-  const _subtitle = subtitle || DEFAULT_PROPS.subtitle;
-  const _features = features || DEFAULT_PROPS.features;
-  const _ctaText = ctaText || DEFAULT_PROPS.ctaText;
-  const _ctaUrl = ctaUrl || DEFAULT_PROPS.ctaUrl;
+  const brand = resolveBrandProps(props);
+  const { hook: _hook, subtitle: _subtitle, features: _features, ctaText: _ctaText, ctaUrl: _ctaUrl, accentColor, themeVariant, tone, screenshots } = brand;
 
   const scene = frame < SCENE.PROBLEM ? 'HOOK'
     : frame < SCENE.PRODUCT ? 'PROBLEM'
@@ -60,7 +56,7 @@ export const LinkedInPromo = ({ hook, subtitle, features, ctaText, ctaUrl, accen
   return (
     <div style={{ width: 1920, height: 1080, position: 'relative', overflow: 'hidden', background: BRAND.darkest }}>
       {AUDIO_ENABLED && <Audio src={staticFile(AUDIO.mainTheme)} volume={0.6} />}
-      <GradientBg variant="main" />
+      <GradientBg variant={themeVariant === 'green' ? 'main' : themeVariant} />
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 120px', gap: 80 }}>
 
@@ -162,7 +158,7 @@ export const LinkedInPromo = ({ hook, subtitle, features, ctaText, ctaUrl, accen
             </div>
             <div style={{ ...slideRight(sceneFrame, 10, 80), flexShrink: 0 }}>
               <PhoneMockup width={280} height={560} scale={1.1}>
-                <DashboardScreen scale={1.1} />
+                <PhoneScreen screenshots={screenshots} scale={1.1} />
               </PhoneMockup>
             </div>
           </div>
@@ -181,7 +177,7 @@ export const LinkedInPromo = ({ hook, subtitle, features, ctaText, ctaUrl, accen
               <CredentialBadge icon="🔐" text="Bank-grade security" frame={sceneFrame} delay={32} />
               <CredentialBadge icon="⭐" text="4.9 App Store rating" frame={sceneFrame} delay={40} />
             </div>
-            <div style={{ ...scaleIn(sceneFrame, 50), display: 'inline-block', background: BRAND.btnGreen, borderRadius: 60, padding: '24px 72px' }}>
+            <div style={{ ...scaleIn(sceneFrame, toneDelay(50, tone)), display: 'inline-block', background: accentColor, borderRadius: 60, padding: '24px 72px' }}>
               <span style={{ fontSize: 42, fontWeight: FONT.weight.bold, color: BRAND.white }}>{_ctaText} — {_ctaUrl.replace('https://', '')}</span>
             </div>
           </div>

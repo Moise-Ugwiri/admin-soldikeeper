@@ -14,7 +14,7 @@ import { Logo } from '../components/Logo.jsx';
 import { BRAND, FONT } from '../theme.js';
 import { fadeUp, scaleIn, slideLeft } from '../animations.js';
 import { AUDIO_ENABLED, AUDIO } from '../audioConfig.js';
-import { DEFAULT_PROPS } from '../defaultProps.js';
+import { resolveBrandProps, toneDelay } from '../brandUtils.js';
 
 const SCENE = { HOOK: 0, DEMO: 120, SETTLE: 380, CTA: 570 };
 
@@ -53,14 +53,10 @@ const DebtRow = ({ from, to, amount, fromColor, toColor, frame, delay }) => (
   </div>
 );
 
-export const FeatureSplit = ({ hook, subtitle, features, ctaText, ctaUrl, accentColor, theme, tone } = {}) => {
+export const FeatureSplit = (props = {}) => {
   const frame = useCurrentFrame();
-
-  const _hook = hook || DEFAULT_PROPS.hook;
-  const _subtitle = subtitle || DEFAULT_PROPS.subtitle;
-  const _features = features || DEFAULT_PROPS.features;
-  const _ctaText = ctaText || DEFAULT_PROPS.ctaText;
-  const _ctaUrl = ctaUrl || DEFAULT_PROPS.ctaUrl;
+  const brand = resolveBrandProps({ theme: 'amber', ...props });
+  const { hook: _hook, subtitle: _subtitle, features: _features, ctaText: _ctaText, ctaUrl: _ctaUrl, accentColor, themeVariant, tone } = brand;
 
   const scene = frame < SCENE.DEMO ? 'HOOK'
     : frame < SCENE.SETTLE ? 'DEMO'
@@ -72,7 +68,7 @@ export const FeatureSplit = ({ hook, subtitle, features, ctaText, ctaUrl, accent
   return (
     <div style={{ width: 1920, height: 1080, position: 'relative', overflow: 'hidden', background: BRAND.darkest }}>
       {AUDIO_ENABLED && <Audio src={staticFile(AUDIO.featureSting)} volume={0.7} />}
-      <GradientBg variant="amber" />
+      <GradientBg variant={themeVariant === 'green' ? 'amber' : themeVariant} />
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 120px', gap: 80 }}>
 
@@ -164,7 +160,7 @@ export const FeatureSplit = ({ hook, subtitle, features, ctaText, ctaUrl, accent
             <h2 style={{ ...fadeUp(sceneFrame, 14), margin: '0 0 40px', fontSize: 68, fontWeight: FONT.weight.black, color: BRAND.white }}>
               Group money. Zero drama.
             </h2>
-            <div style={{ ...scaleIn(sceneFrame, 28), display: 'inline-block', background: BRAND.btnGreen, borderRadius: 60, padding: '22px 64px' }}>
+            <div style={{ ...scaleIn(sceneFrame, toneDelay(28, tone)), display: 'inline-block', background: accentColor, borderRadius: 60, padding: '22px 64px' }}>
               <span style={{ fontSize: 38, fontWeight: FONT.weight.bold, color: BRAND.white }}>{_ctaText} — {_ctaUrl.replace('https://', '')}</span>
             </div>
           </div>

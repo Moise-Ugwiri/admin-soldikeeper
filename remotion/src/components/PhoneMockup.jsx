@@ -1,5 +1,7 @@
 import React from 'react';
 import { BRAND, FONT } from '../theme.js';
+import { ScreenshotSlot } from './ScreenshotSlot.jsx';
+import { screenshotForSlot } from '../brandUtils.js';
 
 /** Phone mockup with dark screen — children render as screen content */
 export const PhoneMockup = ({ children, width = 300, height = 590, scale = 1 }) => {
@@ -55,6 +57,15 @@ export const PhoneMockup = ({ children, width = 300, height = 590, scale = 1 }) 
       }} />
     </div>
   );
+};
+
+/** Phone screen: uploaded screenshot or fallback dashboard mock */
+export const PhoneScreen = ({ screenshots, scale = 1 }) => {
+  const shot = screenshotForSlot(screenshots, 'phoneScreen');
+  if (shot?.url) {
+    return <ScreenshotSlot url={shot.url} />;
+  }
+  return <DashboardScreen scale={scale} />;
 };
 
 /** App screen mock — dashboard inside phone */

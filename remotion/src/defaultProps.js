@@ -12,4 +12,5 @@ export const DEFAULT_PROPS = {
   accentColor: '#10b981',
   theme: 'green',
   tone: 'energetic',
+  screenshots: [],
 };

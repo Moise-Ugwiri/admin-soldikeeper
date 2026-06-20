@@ -1,21 +1,21 @@
-/* eslint-disable */
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
-  Box, Grid, Typography, Paper, Tabs, Tab
+  Box, Typography, Button, Accordion, AccordionSummary, AccordionDetails, Tabs, Tab,
 } from '@mui/material';
-import {
-  VideoLibrary as VideoLibraryIcon,
-  AutoAwesome as AutoAwesomeStudioIcon,
-  VideoLibrary as VideoLibraryStudioIcon,
-} from '@mui/icons-material';
-
-import AIVideoTab from './AIVideoTab';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import FolderIcon from '@mui/icons-material/Folder';
+import PipelineHealthBanner from './PipelineHealthBanner';
+import CreateWizard from './CreateWizard';
+import UnifiedAssetLibrary from './UnifiedAssetLibrary';
 import TemplatePicker from './TemplatePicker';
 import ContentEditor from './ContentEditor';
 import PreviewPane from './PreviewPane';
 import OutputPanel from './OutputPanel';
+import AIVideoTab from './AIVideoTab';
 import AIBriefDrawer from './AIBriefDrawer';
 import VideoLibraryDrawer from './VideoLibraryDrawer';
+
 const DEFAULT_PROPS = {
   hook: 'Stop losing your receipts',
   subtitle: 'Track every expense automatically',
@@ -28,97 +28,81 @@ const DEFAULT_PROPS = {
   contentType: 'promotional',
 };
 
-const MediaStudio = () => {
-  const [activeTab, setActiveTab] = useState(0);
+export default function MediaStudio() {
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [advancedTab, setAdvancedTab] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState('TikTok');
   const [inputProps, setInputProps] = useState({ ...DEFAULT_PROPS });
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
-
-  const handlePropsChange = useCallback((newProps) => {
-    setInputProps(newProps);
-  }, []);
-
-  const handleTemplateSelect = (templateId) => {
-    setSelectedTemplate(templateId);
-  };
-
-  const handleAIApply = (generatedProps) => {
-    setInputProps((prev) => ({ ...prev, ...generatedProps }));
-  };
+  const [legacyLibraryOpen, setLegacyLibraryOpen] = useState(false);
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-        <VideoLibraryIcon sx={{ color: '#10b981', fontSize: 28 }} />
-        <Box>
-          <Typography variant="h5" fontWeight={800} lineHeight={1.1}>Media Studio</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Build custom social media videos powered by AI
-          </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <VideoLibraryIcon sx={{ color: '#10b981', fontSize: 28 }} />
+          <Box>
+            <Typography variant="h5" fontWeight={800} lineHeight={1.1}>Media Studio</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Describe what you need — get videos, posters, and flyers for SoldiKeeper
+            </Typography>
+          </Box>
         </Box>
+        <Button variant="outlined" startIcon={<FolderIcon />} onClick={() => setLibraryOpen(true)}>
+          Asset Library
+        </Button>
       </Box>
 
-      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 2 }}>
-        <Tab icon={<VideoLibraryStudioIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="Remotion Studio" />
-        <Tab icon={<AutoAwesomeStudioIcon sx={{ fontSize: 18, color: activeTab === 1 ? '#8b5cf6' : 'inherit' }} />} iconPosition="start" label="AI Video" />
-      </Tabs>
+      <PipelineHealthBanner />
 
-      {activeTab === 0 && (
-        <>
-          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-            <TemplatePicker selected={selectedTemplate} onSelect={handleTemplateSelect} />
-          </Paper>
+      <CreateWizard onOpenLibrary={() => setLibraryOpen(true)} />
 
-          <Grid container spacing={2} sx={{ flexGrow: 1 }}>
-            <Grid item xs={12} md={5}>
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '100%' }}>
+      <Accordion sx={{ mt: 3 }} defaultExpanded={false}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Advanced tools (manual Remotion & AI Video)</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Tabs value={advancedTab} onChange={(_, v) => setAdvancedTab(v)} sx={{ mb: 2 }}>
+            <Tab label="Remotion Studio" />
+            <Tab label="AI Video" />
+          </Tabs>
+
+          {advancedTab === 0 && (
+            <Box>
+              <TemplatePicker selected={selectedTemplate} onSelect={setSelectedTemplate} />
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mt: 2 }}>
                 <ContentEditor
                   inputProps={inputProps}
-                  onPropsChange={handlePropsChange}
+                  onPropsChange={setInputProps}
                   onOpenAI={() => setAiDrawerOpen(true)}
                 />
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12} md={7}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <PreviewPane
-                    compositionId={selectedTemplate}
-                    inputProps={inputProps}
-                  />
-                </Paper>
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                  <OutputPanel
-                    compositionId={selectedTemplate}
-                    inputProps={inputProps}
-                    onOpenLibrary={() => setLibraryOpen(true)}
-                  />
-                </Paper>
+                <Box>
+                  <PreviewPane compositionId={selectedTemplate} inputProps={inputProps} />
+                  <Box sx={{ mt: 2 }}>
+                    <OutputPanel
+                      compositionId={selectedTemplate}
+                      inputProps={inputProps}
+                      onOpenLibrary={() => setLegacyLibraryOpen(true)}
+                    />
+                  </Box>
+                </Box>
               </Box>
-            </Grid>
-          </Grid>
-        </>
-      )}
+            </Box>
+          )}
 
-      {activeTab === 1 && (
-        <AIVideoTab />
-      )}
+          {advancedTab === 1 && <AIVideoTab />}
+        </AccordionDetails>
+      </Accordion>
 
+      <UnifiedAssetLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} />
       <AIBriefDrawer
         open={aiDrawerOpen}
         onClose={() => setAiDrawerOpen(false)}
         selectedTemplate={selectedTemplate}
         inputProps={inputProps}
-        onApply={handleAIApply}
+        onApply={(generated) => setInputProps((p) => ({ ...p, ...generated }))}
       />
-      <VideoLibraryDrawer
-        open={libraryOpen}
-        onClose={() => setLibraryOpen(false)}
-      />
+      <VideoLibraryDrawer open={legacyLibraryOpen} onClose={() => setLegacyLibraryOpen(false)} />
     </Box>
   );
-};
-
-export default MediaStudio;
+}

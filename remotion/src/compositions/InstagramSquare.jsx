@@ -13,22 +13,18 @@ import React from 'react';
 import { useCurrentFrame, Audio, staticFile } from 'remotion';
 import { GradientBg } from '../components/GradientBg.jsx';
 import { Logo } from '../components/Logo.jsx';
-import { PhoneMockup, DashboardScreen } from '../components/PhoneMockup.jsx';
+import { PhoneMockup, PhoneScreen } from '../components/PhoneMockup.jsx';
 import { BRAND, FONT } from '../theme.js';
 import { fadeUp, scaleIn } from '../animations.js';
 import { AUDIO_ENABLED, AUDIO } from '../audioConfig.js';
-import { DEFAULT_PROPS } from '../defaultProps.js';
+import { resolveBrandProps, toneDelay } from '../brandUtils.js';
 
 const SCENE = { BRAND: 0, BENEFITS: 90, PHONE: 210, CTA: 360 };
 
-export const InstagramSquare = ({ hook, subtitle, features, ctaText, ctaUrl, accentColor, theme, tone } = {}) => {
+export const InstagramSquare = (props = {}) => {
   const frame = useCurrentFrame();
-
-  const _hook = hook || DEFAULT_PROPS.hook;
-  const _subtitle = subtitle || DEFAULT_PROPS.subtitle;
-  const _features = features || DEFAULT_PROPS.features;
-  const _ctaText = ctaText || DEFAULT_PROPS.ctaText;
-  const _ctaUrl = ctaUrl || DEFAULT_PROPS.ctaUrl;
+  const brand = resolveBrandProps(props);
+  const { hook: _hook, subtitle: _subtitle, features: _features, ctaText: _ctaText, ctaUrl: _ctaUrl, accentColor, themeVariant, tone, screenshots } = brand;
 
   const scene = frame < SCENE.BENEFITS ? 'BRAND'
     : frame < SCENE.PHONE ? 'BENEFITS'
@@ -40,7 +36,7 @@ export const InstagramSquare = ({ hook, subtitle, features, ctaText, ctaUrl, acc
   return (
     <div style={{ width: 1080, height: 1080, position: 'relative', overflow: 'hidden', background: BRAND.darkest }}>
       {AUDIO_ENABLED && <Audio src={staticFile(AUDIO.shortHook)} volume={0.65} />}
-      <GradientBg variant="green" particleCount={4} />
+      <GradientBg variant={themeVariant} particleCount={4} />
 
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '60px 80px', gap: 32 }}>
 
@@ -87,7 +83,7 @@ export const InstagramSquare = ({ hook, subtitle, features, ctaText, ctaUrl, acc
           <div style={{ display: 'flex', alignItems: 'center', gap: 56 }}>
             <div style={{ ...scaleIn(sceneFrame, 0) }}>
               <PhoneMockup width={260} height={520} scale={1}>
-                <DashboardScreen scale={1} />
+                <PhoneScreen screenshots={screenshots} scale={1} />
               </PhoneMockup>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -105,7 +101,7 @@ export const InstagramSquare = ({ hook, subtitle, features, ctaText, ctaUrl, acc
                   borderRadius: 16,
                   padding: '16px 28px',
                 }}>
-                  <div style={{ fontSize: 48, fontWeight: FONT.weight.black, color: BRAND.greenLight }}>{item.stat}</div>
+                  <div style={{ fontSize: 48, fontWeight: FONT.weight.black, color: accentColor }}>{item.stat}</div>
                   <div style={{ fontSize: 24, color: BRAND.textMuted }}>{item.label}</div>
                 </div>
               ))}
@@ -121,7 +117,7 @@ export const InstagramSquare = ({ hook, subtitle, features, ctaText, ctaUrl, acc
             <div style={{ ...fadeUp(sceneFrame, 16), fontFamily: FONT.sans, fontSize: 52, fontWeight: FONT.weight.black, color: BRAND.white, textAlign: 'center' }}>
               Free to download 🎉
             </div>
-            <div style={{ ...scaleIn(sceneFrame, 28), background: BRAND.btnGreen, borderRadius: 50, padding: '22px 60px' }}>
+            <div style={{ ...scaleIn(sceneFrame, toneDelay(28, tone)), background: accentColor, borderRadius: 50, padding: '22px 60px' }}>
               <span style={{ fontFamily: FONT.sans, fontSize: 38, fontWeight: FONT.weight.bold, color: BRAND.white }}>
                 {_ctaText}
               </span>
