@@ -214,6 +214,10 @@ export default function AIVideoTab() {
             </FormControl>
           </Grid>
         </Grid>
+        <Alert severity="info" sx={{ mt: 1, borderRadius: 2 }}>
+          Uses <strong>live screenshots</strong> from the current SoldiKeeper app — not stored images.
+          Requires demo credentials on the server (<code>MEDIA_DEMO_EMAIL</code> / <code>MEDIA_DEMO_PASSWORD</code>).
+        </Alert>
         <Button
           variant="contained"
           size="large"
@@ -223,7 +227,9 @@ export default function AIVideoTab() {
           sx={{ mt: 2, bgcolor: '#8b5cf6', '&:hover': { bgcolor: '#7c3aed' }, fontWeight: 700 }}
           fullWidth
         >
-          {isGenerating ? 'Generating…' : '✨ Generate AI Video'}
+          {isGenerating ? 'Generating…' : contentType === 'educational' || contentType === 'feature_tutorial'
+            ? '📚 Generate Educational Video'
+            : '✨ Generate Promo Video'}
         </Button>
       </Paper>
 
@@ -238,7 +244,9 @@ export default function AIVideoTab() {
             sx={{ mb: 1, '& .MuiLinearProgress-bar': { bgcolor: '#8b5cf6' } }}
           />
           <Typography variant="caption" color="text.secondary">
-            Generating images with Grok Imagine, stitching with FFmpeg… This takes ~20–60 seconds.
+            {contentType === 'educational' || contentType === 'feature_tutorial'
+              ? 'Capturing live app screens per step, compositing tutorial overlays, encoding premium quality… ~45–90s.'
+              : 'Capturing live SoldiKeeper app screens, compositing device mockups, stitching with FFmpeg… ~30–90s.'}
           </Typography>
         </Paper>
       )}
