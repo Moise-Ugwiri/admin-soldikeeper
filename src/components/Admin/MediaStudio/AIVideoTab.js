@@ -50,7 +50,7 @@ export default function AIVideoTab() {
   useEffect(() => {
     fetchAIVideoCapabilities()
       .then(setCapabilities)
-      .catch(() => setCapabilities({ canGenerate: true, screenshotMode: 'unknown' }));
+      .catch((err) => setCapabilities({ canGenerate: false, message: err.message }));
   }, []);
 
   useEffect(() => {
@@ -149,8 +149,8 @@ export default function AIVideoTab() {
     }
   };
 
-  const canGenerate = capabilities?.canGenerate !== false;
-  const usingCatalogScreenshots = capabilities?.screenshotMode === 'catalog';
+  const canGenerate = capabilities == null ? false : capabilities.canGenerate === true;
+  const pipelineReady = capabilities?.canGenerate === true;
   const isGenerating = generating && jobStatus && ['queued', 'rendering'].includes(jobStatus.status);
   const isDone = jobStatus?.status === 'done';
   const isFailed = jobStatus?.status === 'failed';
@@ -160,17 +160,16 @@ export default function AIVideoTab() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-      {capabilities && !canGenerate && (
+      {capabilities && !pipelineReady && (
         <Alert severity="error" sx={{ borderRadius: 2 }}>
-          {capabilities.message || 'AI Video cannot run — screenshot capture is not configured on the server.'}
-          {' '}Set <code>MEDIA_DEMO_EMAIL</code> and <code>MEDIA_DEMO_PASSWORD</code> in Railway, then redeploy.
+          {capabilities.message || 'Photorealistic AI Video is not configured on the server.'}
+          {' '}Requires <code>MEDIA_DEMO_EMAIL</code>, <code>MEDIA_DEMO_PASSWORD</code>, and <code>XAI_API_KEY</code> on Railway.
         </Alert>
       )}
 
-      {usingCatalogScreenshots && (
-        <Alert severity="warning" sx={{ borderRadius: 2 }}>
-          Live demo credentials are not set — videos will use bundled catalog screenshots.
-          Add <code>MEDIA_DEMO_EMAIL</code> / <code>MEDIA_DEMO_PASSWORD</code> on Railway for current app UI.
+      {pipelineReady && (
+        <Alert severity="success" sx={{ borderRadius: 2 }}>
+          Photorealistic UGC pipeline ready — Grok Imagine generates real people; live SoldiKeeper app UI is placed on their phone screens.
         </Alert>
       )}
 
@@ -241,9 +240,8 @@ export default function AIVideoTab() {
           </Grid>
         </Grid>
         <Alert severity="info" sx={{ mt: 1, borderRadius: 2 }}>
-          {capabilities?.liveCaptureReady
-            ? <>Uses <strong>live screenshots</strong> from the current SoldiKeeper app.</>
-            : <>Uses <strong>catalog screenshots</strong> until demo credentials are configured on the server.</>}
+          Each scene: <strong>Grok Imagine</strong> photorealistic person in a real setting → <strong>live app UI</strong> composited onto their phone.
+          Generation takes ~2–4 min ({sceneCount} scenes × AI render). No old catalog images.
         </Alert>
         <Button
           variant="contained"
@@ -271,9 +269,7 @@ export default function AIVideoTab() {
             sx={{ mb: 1, '& .MuiLinearProgress-bar': { bgcolor: '#8b5cf6' } }}
           />
           <Typography variant="caption" color="text.secondary">
-            {contentType === 'educational' || contentType === 'feature_tutorial'
-              ? 'Capturing live app screens per step, compositing tutorial overlays, encoding premium quality… ~45–90s.'
-              : 'Capturing live SoldiKeeper app screens, compositing device mockups, stitching with FFmpeg… ~30–90s.'}
+            Generating photorealistic people with Grok Imagine, capturing live app UI, integrating onto phone screens… ~2–4 min.
           </Typography>
         </Paper>
       )}
