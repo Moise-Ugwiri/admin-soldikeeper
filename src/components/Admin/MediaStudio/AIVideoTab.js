@@ -188,7 +188,7 @@ export default function AIVideoTab() {
 
       {pipelineReady && (
         <Alert severity="success" sx={{ borderRadius: 2 }}>
-          Photorealistic UGC pipeline ready — Grok Imagine generates real people; live SoldiKeeper app UI is placed on their phone screens.
+          Cinematic app spot pipeline ready — real people on top, live SoldiKeeper UI on a premium phone below (Apple/Google style), with Grok video motion.
         </Alert>
       )}
 
@@ -259,8 +259,8 @@ export default function AIVideoTab() {
           </Grid>
         </Grid>
         <Alert severity="info" sx={{ mt: 1, borderRadius: 2 }}>
-          Each scene: <strong>Grok Imagine</strong> photorealistic person in a real setting → <strong>live app UI</strong> composited onto their phone.
-          Generation takes ~2–4 min ({sceneCount} scenes × AI render). No old catalog images.
+          Premium commercial format: <strong>real person</strong> (no phone in AI shot) + <strong>live app</strong> on a correctly oriented device mockup + optional <strong>Grok video motion</strong>.
+          Expect ~5–10 min for {sceneCount} scenes.
         </Alert>
         <Button
           variant="contained"
@@ -288,7 +288,7 @@ export default function AIVideoTab() {
             sx={{ mb: 1, '& .MuiLinearProgress-bar': { bgcolor: '#8b5cf6' } }}
           />
           <Typography variant="caption" color="text.secondary">
-            Generating photorealistic people with Grok Imagine, capturing live app UI, integrating onto phone screens… ~2–4 min.
+            Rendering cinematic scenes, capturing live app UI, compositing premium phone mockups, generating motion clips… ~5–10 min.
           </Typography>
         </Paper>
       )}
