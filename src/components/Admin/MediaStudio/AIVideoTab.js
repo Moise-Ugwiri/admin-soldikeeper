@@ -117,8 +117,17 @@ export default function AIVideoTab() {
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
+        const missing = Array.isArray(data.missing) && data.missing.length
+          ? ` Missing on Railway: ${data.missing.join(', ')}.`
+          : '';
         const msg = data.error || `Request failed (HTTP ${r.status})`;
-        throw new Error(data.code ? `${msg} [${data.code}]` : msg);
+        throw new Error(`${msg}${missing}`);
+      }
+      if (data.status === 'failed') {
+        const missing = Array.isArray(data.missing) && data.missing.length
+          ? ` Add on Railway: ${data.missing.join(', ')}, then redeploy.`
+          : '';
+        throw new Error(`${data.error || 'Pipeline not configured.'}${missing}`);
       }
       if (data.jobId) {
         setJobId(data.jobId);
@@ -162,8 +171,18 @@ export default function AIVideoTab() {
 
       {capabilities && !pipelineReady && (
         <Alert severity="error" sx={{ borderRadius: 2 }}>
-          {capabilities.message || 'Photorealistic AI Video is not configured on the server.'}
-          {' '}Requires <code>MEDIA_DEMO_EMAIL</code>, <code>MEDIA_DEMO_PASSWORD</code>, and <code>XAI_API_KEY</code> on Railway.
+          <Typography variant="subtitle2" fontWeight={700} gutterBottom>AI Video setup required on Railway</Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>{capabilities.message}</Typography>
+          {Array.isArray(capabilities.missing) && capabilities.missing.length > 0 && (
+            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+              {capabilities.missing.map((v) => (
+                <Typography key={v} component="li" variant="body2"><code>{v}</code></Typography>
+              ))}
+            </Box>
+          )}
+          <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+            Create a demo account on soldikeeper.com with dashboard access, add vars in Railway → Variables, redeploy backend.
+          </Typography>
         </Alert>
       )}
 
