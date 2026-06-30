@@ -11,7 +11,7 @@ import {
   MovieFilter as MovieFilterIcon,
   MusicNote as MusicNoteIcon,
 } from '@mui/icons-material';
-import { getApiUrl, getAuthHeader } from './api';
+import { getApiUrl, getAuthHeader, fetchAIVideoCapabilities } from './api';
 import SceneImage from './SceneImage';
 import VideoPreview from './VideoPreview';
 
@@ -44,7 +44,14 @@ export default function AIVideoTab() {
   const [jobId, setJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [error, setError] = useState(null);
+  const [capabilities, setCapabilities] = useState(null);
   const pollRef = useRef(null);
+
+  useEffect(() => {
+    fetchAIVideoCapabilities()
+      .then(setCapabilities)
+      .catch(() => setCapabilities({ canGenerate: true, screenshotMode: 'unknown' }));
+  }, []);
 
   useEffect(() => {
     fetch(`${API_URL}/admin/ai-video/music`, { headers: authHeader })
@@ -108,8 +115,11 @@ export default function AIVideoTab() {
           brief, platform, sceneCount, totalDuration, musicTrack, contentType,
         }),
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const msg = data.error || `Request failed (HTTP ${r.status})`;
+        throw new Error(data.code ? `${msg} [${data.code}]` : msg);
+      }
       if (data.jobId) {
         setJobId(data.jobId);
         setJobStatus({ status: 'queued', progress: 0, stage: 'Queued…', storyboard: null });
@@ -139,6 +149,8 @@ export default function AIVideoTab() {
     }
   };
 
+  const canGenerate = capabilities?.canGenerate !== false;
+  const usingCatalogScreenshots = capabilities?.screenshotMode === 'catalog';
   const isGenerating = generating && jobStatus && ['queued', 'rendering'].includes(jobStatus.status);
   const isDone = jobStatus?.status === 'done';
   const isFailed = jobStatus?.status === 'failed';
@@ -147,6 +159,20 @@ export default function AIVideoTab() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+      {capabilities && !canGenerate && (
+        <Alert severity="error" sx={{ borderRadius: 2 }}>
+          {capabilities.message || 'AI Video cannot run — screenshot capture is not configured on the server.'}
+          {' '}Set <code>MEDIA_DEMO_EMAIL</code> and <code>MEDIA_DEMO_PASSWORD</code> in Railway, then redeploy.
+        </Alert>
+      )}
+
+      {usingCatalogScreenshots && (
+        <Alert severity="warning" sx={{ borderRadius: 2 }}>
+          Live demo credentials are not set — videos will use bundled catalog screenshots.
+          Add <code>MEDIA_DEMO_EMAIL</code> / <code>MEDIA_DEMO_PASSWORD</code> on Railway for current app UI.
+        </Alert>
+      )}
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ borderRadius: 2 }}>
@@ -215,15 +241,16 @@ export default function AIVideoTab() {
           </Grid>
         </Grid>
         <Alert severity="info" sx={{ mt: 1, borderRadius: 2 }}>
-          Uses <strong>live screenshots</strong> from the current SoldiKeeper app — not stored images.
-          Requires demo credentials on the server (<code>MEDIA_DEMO_EMAIL</code> / <code>MEDIA_DEMO_PASSWORD</code>).
+          {capabilities?.liveCaptureReady
+            ? <>Uses <strong>live screenshots</strong> from the current SoldiKeeper app.</>
+            : <>Uses <strong>catalog screenshots</strong> until demo credentials are configured on the server.</>}
         </Alert>
         <Button
           variant="contained"
           size="large"
           startIcon={isGenerating ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
           onClick={handleGenerate}
-          disabled={brief.trim().length < 10 || isGenerating}
+          disabled={brief.trim().length < 10 || isGenerating || !canGenerate}
           sx={{ mt: 2, bgcolor: '#8b5cf6', '&:hover': { bgcolor: '#7c3aed' }, fontWeight: 700 }}
           fullWidth
         >

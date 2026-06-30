@@ -20,6 +20,13 @@ export async function fetchMediaHealth() {
   return res.json();
 }
 
+export async function fetchAIVideoCapabilities() {
+  const res = await fetch(`${getApiUrl()}/admin/ai-video/capabilities`, { headers: getAuthHeader() });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Capabilities check failed (${res.status})`);
+  return data;
+}
+
 export async function planMedia(body) {
   const res = await fetch(`${getApiUrl()}/admin/media/plan`, {
     method: 'POST',
