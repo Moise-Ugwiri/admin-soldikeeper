@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   Box, Paper, Typography, Select, MenuItem, FormControl, InputLabel,
-  Button, Chip, CircularProgress, Alert, Grid, alpha
+  Button, Chip, CircularProgress, Alert, Grid, Stack, alpha
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -28,6 +28,8 @@ export default function CampaignDrafter() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [packBusy, setPackBusy] = useState(false);
+  const [packMsg, setPackMsg] = useState(null);
 
   const handleDraft = async () => {
     setLoading(true);
@@ -63,6 +65,27 @@ export default function CampaignDrafter() {
       purpose: 'marketing',
     }));
     window.dispatchEvent(new CustomEvent('admin-navigate-tab', { detail: { tabLabel: '🎬 Media' } }));
+  };
+
+  const handleGeneratePack = async () => {
+    if (!result) return;
+    setPackBusy(true);
+    setPackMsg(null);
+    try {
+      const { createPack } = await import('./MediaStudio/api');
+      const brief = [
+        result.headline || result.subject || objective,
+        result.previewText,
+        `CTA: ${result.cta || 'Try SoldiKeeper Free'}`,
+        `Audience: ${result.audience || audience}. Tone: ${tone}.`,
+      ].filter(Boolean).join('. ');
+      const pack = await createPack({ brief, packType: 'conversion', aesthetic: 'cinematic', notifyTelegram: true });
+      setPackMsg(`Pack ${pack.campaignId} queued — Telegram will receive the album.`);
+    } catch (err) {
+      setPackMsg(err.message);
+    } finally {
+      setPackBusy(false);
+    }
   };
 
   return (
@@ -116,16 +139,28 @@ export default function CampaignDrafter() {
         <Paper sx={{ p: 3, mt: 2, background: alpha('#fff', 0.03) }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h6" fontWeight="bold">Generated Campaign</Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<VideoLibraryIcon />}
-              onClick={handleGenerateVisual}
-              sx={{ borderColor: '#10b981', color: '#10b981' }}
-            >
-              Generate visual in Media Studio
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<VideoLibraryIcon />}
+                onClick={handleGenerateVisual}
+                sx={{ borderColor: '#10b981', color: '#10b981' }}
+              >
+                Open in wizard
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                disabled={packBusy}
+                onClick={handleGeneratePack}
+                sx={{ bgcolor: '#10b981' }}
+              >
+                {packBusy ? 'Queuing pack…' : 'Generate pack + Telegram'}
+              </Button>
+            </Stack>
           </Box>
+          {packMsg && <Alert severity="info" sx={{ mb: 2 }}>{packMsg}</Alert>}
           <Grid container spacing={2}>
             {[
               { label: 'Subject Line (A)', value: result.subject },

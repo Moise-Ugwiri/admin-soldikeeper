@@ -4,7 +4,9 @@ import { Box, Card, CardActionArea, Typography, Chip, Stack } from '@mui/materia
 
 const TEMPLATES = [
   { id: 'TikTok',         platform: 'TikTok',     duration: '30s', resolution: '1080×1920', color: '#000000', emoji: '🎵', orientation: 'vertical' },
-  { id: 'Instagram',      platform: 'Instagram',  duration: '15s', resolution: '1080×1080', color: '#E1306C', emoji: '📸', orientation: 'square' },
+  { id: 'InstagramReel',  platform: 'IG Reel',    duration: '30s', resolution: '1080×1920', color: '#E1306C', emoji: '🎬', orientation: 'vertical' },
+  { id: 'InstagramStory', platform: 'IG Story',   duration: '15s', resolution: '1080×1920', color: '#C13584', emoji: '📱', orientation: 'vertical' },
+  { id: 'Instagram',      platform: 'IG Square',  duration: '15s', resolution: '1080×1080', color: '#E1306C', emoji: '📸', orientation: 'square' },
   { id: 'YouTube',        platform: 'YouTube',    duration: '60s', resolution: '1920×1080', color: '#FF0000', emoji: '▶️', orientation: 'horizontal' },
   { id: 'LinkedIn',       platform: 'LinkedIn',   duration: '45s', resolution: '1920×1080', color: '#0A66C2', emoji: '💼', orientation: 'horizontal' },
   { id: 'FeatureReceipt', platform: 'Receipts',   duration: '25s', resolution: '1920×1080', color: '#00897B', emoji: '📸', orientation: 'horizontal' },

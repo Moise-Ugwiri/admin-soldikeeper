@@ -7,6 +7,7 @@ import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import FolderIcon from '@mui/icons-material/Folder';
 import PipelineHealthBanner from './PipelineHealthBanner';
 import CreateWizard from './CreateWizard';
+import StudioOps from './StudioOps';
 import UnifiedAssetLibrary from './UnifiedAssetLibrary';
 import TemplatePicker from './TemplatePicker';
 import ContentEditor from './ContentEditor';
@@ -43,7 +44,8 @@ export default function MediaStudio() {
   const [prefill] = useState(() => readPrefill());
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [advancedTab, setAdvancedTab] = useState(0);
-  const [selectedTemplate, setSelectedTemplate] = useState('TikTok');
+  const [mainTab, setMainTab] = useState(prefill ? 1 : 0);
+  const [selectedTemplate, setSelectedTemplate] = useState('InstagramReel');
   const [inputProps, setInputProps] = useState({ ...DEFAULT_PROPS });
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [legacyLibraryOpen, setLegacyLibraryOpen] = useState(false);
@@ -56,7 +58,7 @@ export default function MediaStudio() {
           <Box>
             <Typography variant="h5" fontWeight={800} lineHeight={1.1}>Media Studio</Typography>
             <Typography variant="body2" color="text.secondary">
-              Describe what you need — get videos, posters, and flyers for SoldiKeeper
+              Autonomous marketing factory — Telegram is the edit bay. Generate here whenever you want.
             </Typography>
           </Box>
         </Box>
@@ -67,7 +69,13 @@ export default function MediaStudio() {
 
       <PipelineHealthBanner />
 
-      <CreateWizard onOpenLibrary={() => setLibraryOpen(true)} initialPrefill={prefill} />
+      <Tabs value={mainTab} onChange={(_, v) => setMainTab(v)} sx={{ mb: 2 }}>
+        <Tab label="Packs & calendar" />
+        <Tab label="Single asset (wizard)" />
+      </Tabs>
+
+      {mainTab === 0 && <StudioOps />}
+      {mainTab === 1 && <CreateWizard onOpenLibrary={() => setLibraryOpen(true)} initialPrefill={prefill} />}
 
       <Accordion sx={{ mt: 3 }} defaultExpanded={false}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>

@@ -38,7 +38,7 @@ export const RemotionRoot = () => (
       defaultProps={DEFAULT_PROPS}
     />
 
-    {/* Instagram Square — 1080×1080 — 15s — Clean, minimal */}
+    {/* Instagram Feed (square) — 1080×1080 — 15s — keep id Instagram for back-compat */}
     <Composition
       id="Instagram"
       component={InstagramSquare}
@@ -46,6 +46,28 @@ export const RemotionRoot = () => (
       fps={30}
       width={1080}
       height={1080}
+      defaultProps={DEFAULT_PROPS}
+    />
+
+    {/* Instagram Reel — 1080×1920 — 30s — Reels are vertical */}
+    <Composition
+      id="InstagramReel"
+      component={TikTokShort}
+      durationInFrames={900}
+      fps={30}
+      width={1080}
+      height={1920}
+      defaultProps={DEFAULT_PROPS}
+    />
+
+    {/* Instagram Story — 1080×1920 — 15s */}
+    <Composition
+      id="InstagramStory"
+      component={TikTokShort}
+      durationInFrames={450}
+      fps={30}
+      width={1080}
+      height={1920}
       defaultProps={DEFAULT_PROPS}
     />
 

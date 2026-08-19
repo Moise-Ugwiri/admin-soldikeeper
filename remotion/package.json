@@ -9,6 +9,8 @@
     "render:youtube":   "remotion render src/index.jsx YouTube      out/youtube-full-promo.mp4     --codec=h264",
     "render:tiktok":    "remotion render src/index.jsx TikTok       out/tiktok-reels-short.mp4     --codec=h264",
     "render:instagram": "remotion render src/index.jsx Instagram    out/instagram-square.mp4       --codec=h264",
+    "render:ig-reel":   "remotion render src/index.jsx InstagramReel out/instagram-reel.mp4         --codec=h264",
+    "render:ig-story":  "remotion render src/index.jsx InstagramStory out/instagram-story.mp4       --codec=h264",
     "render:linkedin":  "remotion render src/index.jsx LinkedIn     out/linkedin-promo.mp4         --codec=h264",
     "render:receipt":   "remotion render src/index.jsx FeatureReceipt  out/feature-receipt-scan.mp4   --codec=h264",
     "render:budget":    "remotion render src/index.jsx FeatureBudget   out/feature-smart-budget.mp4   --codec=h264",

@@ -64,7 +64,7 @@ export default function PlanReviewCard({ plan, onChange, fromFallback }) {
               label="Composition"
               onChange={(e) => update({ compositionId: e.target.value })}
             >
-              {['TikTok', 'Instagram', 'YouTube', 'LinkedIn', 'FeatureReceipt', 'FeatureBudget', 'FeatureSplit', 'TutorialWalkthrough', 'FeatureQuickTip'].map((c) => (
+              {['TikTok', 'InstagramReel', 'InstagramStory', 'Instagram', 'YouTube', 'LinkedIn', 'FeatureReceipt', 'FeatureBudget', 'FeatureSplit', 'TutorialWalkthrough', 'FeatureQuickTip'].map((c) => (
                 <MenuItem key={c} value={c}>{c}</MenuItem>
               ))}
             </Select>

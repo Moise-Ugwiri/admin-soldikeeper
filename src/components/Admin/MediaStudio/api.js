@@ -164,6 +164,61 @@ export async function fetchThumbnail(compositionId, inputProps, frame = 0) {
   return res.blob();
 }
 
+export async function createPack(body) {
+  const res = await fetch(`${getApiUrl()}/admin/media/packs`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || data.message || `Pack failed (${res.status})`);
+  return data;
+}
+
+export async function fetchPacks(status) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : '';
+  const res = await fetch(`${getApiUrl()}/admin/media/packs${q}`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to list packs');
+  return data.campaigns || [];
+}
+
+export async function fetchStudioStatus() {
+  const res = await fetch(`${getApiUrl()}/admin/media/studio`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Studio status failed');
+  return data;
+}
+
+export async function decidePack(campaignId, action, note) {
+  const res = await fetch(`${getApiUrl()}/admin/media/packs/${campaignId}/decide`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify({ action, note }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Decision failed');
+  return data;
+}
+
+export async function setStudioSpend(body) {
+  const res = await fetch(`${getApiUrl()}/admin/media/studio/spend`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Spend update failed');
+  return data;
+}
+
+export async function fetchMediaJobs() {
+  const res = await fetch(`${getApiUrl()}/admin/media/jobs`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Jobs fetch failed');
+  return data.jobs || [];
+}
+
 export async function fetchLibrary() {
   const res = await fetch(`${getApiUrl()}/admin/media/library`, { headers: getAuthHeader() });
   const data = await res.json();
