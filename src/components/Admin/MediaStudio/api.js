@@ -197,7 +197,11 @@ export async function decidePack(campaignId, action, note) {
     body: JSON.stringify({ action, note }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Decision failed');
+  // 202 = hard grant queued PendingApproval (needs_approval)
+  if (res.status === 202 || data?.needs_approval) {
+    return { ...data, needs_approval: true };
+  }
+  if (!res.ok) throw new Error(data.error || data.reason || 'Decision failed');
   return data;
 }
 

@@ -14,6 +14,7 @@ export default function StudioOps() {
   const [packs, setPacks] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [brief, setBrief] = useState('');
   const [packType, setPackType] = useState('custom');
@@ -28,7 +29,25 @@ export default function StudioOps() {
 
   useEffect(() => { reload(); const t = setInterval(reload, 15000); return () => clearInterval(t); }, []);
 
+  const handleDecide = async (campaignId, action) => {
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await decidePack(campaignId, action);
+      if (result?.needs_approval) {
+        setNotice(
+          `Queued for H-approval (${result.pendingApprovalId || 'pending'}). ` +
+          `Agent ${result.agentId || '?'}: requesting agent cannot self-approve — use Telegram Approve/Reject.`
+        );
+      }
+      await reload();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   const handlePack = async () => {
+
     if (brief.trim().length < 8) return;
     setLoading(true);
     setError(null);
@@ -47,6 +66,7 @@ export default function StudioOps() {
 
   return (
     <Box>
+      {notice && <Alert severity="info" sx={{ mb: 2 }} onClose={() => setNotice(null)}>{notice}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -129,9 +149,9 @@ export default function StudioOps() {
               {p.campaignId} · {(p.jobs || []).filter((j) => j.status === 'done').length}/{(p.jobs || []).length} assets · {new Date(p.createdAt).toLocaleString()}
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-              <Button size="small" onClick={() => decidePack(p.campaignId, 'keep').then(reload)}>Keep</Button>
-              <Button size="small" onClick={() => decidePack(p.campaignId, 'ugc').then(reload)}>More UGC</Button>
-              <Button size="small" color="error" onClick={() => decidePack(p.campaignId, 'kill').then(reload)}>Kill</Button>
+              <Button size="small" onClick={() => handleDecide(p.campaignId, 'keep')}>Keep</Button>
+              <Button size="small" onClick={() => handleDecide(p.campaignId, 'ugc')}>More UGC</Button>
+              <Button size="small" color="error" onClick={() => handleDecide(p.campaignId, 'kill')}>Kill</Button>
             </Stack>
           </Paper>
         ))}
