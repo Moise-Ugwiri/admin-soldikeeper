@@ -7,6 +7,7 @@ import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import FolderIcon from '@mui/icons-material/Folder';
 import PipelineHealthBanner from './PipelineHealthBanner';
 import CreateWizard from './CreateWizard';
+import StockLibrary from './StockLibrary';
 import StudioOps from './StudioOps';
 import UnifiedAssetLibrary from './UnifiedAssetLibrary';
 import TemplatePicker from './TemplatePicker';
@@ -72,10 +73,12 @@ export default function MediaStudio() {
       <Tabs value={mainTab} onChange={(_, v) => setMainTab(v)} sx={{ mb: 2 }}>
         <Tab label="Packs & calendar" />
         <Tab label="Single asset (wizard)" />
+        <Tab label="Stock library" />
       </Tabs>
 
       {mainTab === 0 && <StudioOps />}
       {mainTab === 1 && <CreateWizard onOpenLibrary={() => setLibraryOpen(true)} initialPrefill={prefill} />}
+      {mainTab === 2 && <StockLibrary />}
 
       <Accordion sx={{ mt: 3 }} defaultExpanded={false}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>

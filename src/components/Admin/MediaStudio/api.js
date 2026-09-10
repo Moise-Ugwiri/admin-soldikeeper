@@ -86,6 +86,68 @@ export async function uploadBrandAsset(file, meta = {}) {
   return data.asset;
 }
 
+// ── Stock image library ────────────────────────────────────────────────
+// The pool the generators and the Telegram bot pull from.
+
+export async function fetchStockLibrary() {
+  const res = await fetch(`${getApiUrl()}/admin/media/stock`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load stock library');
+  return data;
+}
+
+export async function seedStockLibrary(force = false) {
+  const res = await fetch(`${getApiUrl()}/admin/media/stock/seed`, {
+    method: 'POST',
+    headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ force }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Seed failed');
+  return data;
+}
+
+export async function uploadStockAssets(files, meta = {}) {
+  const form = new FormData();
+  Array.from(files).forEach((f) => form.append('images', f));
+  ['label', 'usage', 'platform', 'feature', 'screenId', 'notes'].forEach((k) => {
+    if (meta[k]) form.append(k, meta[k]);
+  });
+  if (meta.tags) form.append('tags', JSON.stringify(meta.tags));
+
+  const res = await fetch(`${getApiUrl()}/admin/media/stock/upload`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Upload failed');
+  return data;
+}
+
+export async function updateBrandAsset(id, patch) {
+  const res = await fetch(`${getApiUrl()}/admin/media/assets/${id}`, {
+    method: 'PATCH',
+    headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Update failed');
+  return data.asset;
+}
+
+export async function previewStockPick(screenId) {
+  const qs = screenId ? `?screenId=${encodeURIComponent(screenId)}` : '';
+  const res = await fetch(`${getApiUrl()}/admin/media/stock/preview${qs}`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Preview failed');
+  return data;
+}
+
+export function assetFileUrl(id) {
+  return `${getApiUrl()}/admin/media/assets/${id}/file`;
+}
+
 export async function fetchMusicTracks() {
   const res = await fetch(`${getApiUrl()}/admin/media/music`, { headers: getAuthHeader() });
   const data = await res.json();
