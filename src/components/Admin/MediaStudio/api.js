@@ -223,9 +223,31 @@ export async function fetchMediaJobs() {
   return data.jobs || [];
 }
 
-export async function fetchLibrary() {
+export async function fetchLibrary(opts = {}) {
   const res = await fetch(`${getApiUrl()}/admin/media/library`, { headers: getAuthHeader() });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Library fetch failed');
+  if (opts.raw) return data;
   return data.files || data.videos || [];
+}
+
+export async function clearStudioBuffer(body = {}) {
+  const res = await fetch(`${getApiUrl()}/admin/media/studio/buffer/clear`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeader(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Clear studio buffer failed');
+  return data;
+}
+
+export async function fetchAssetLibraryStatus() {
+  const res = await fetch(`${getApiUrl()}/admin/media/asset-library/status`, { headers: getAuthHeader() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Asset library status failed');
+  return data;
 }

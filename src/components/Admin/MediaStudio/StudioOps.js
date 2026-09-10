@@ -4,7 +4,7 @@ import {
   CircularProgress, MenuItem, Select, FormControl, InputLabel, ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import {
-  createPack, fetchPacks, fetchStudioStatus, decidePack, setStudioSpend, fetchMediaJobs, jobDownloadUrl,
+  createPack, fetchPacks, fetchStudioStatus, decidePack, setStudioSpend, fetchMediaJobs, jobDownloadUrl, clearStudioBuffer,
 } from './api';
 
 const PACK_TYPES = ['custom', 'weekly', 'feature', 'conversion', 'store', 'press'];
@@ -20,6 +20,7 @@ export default function StudioOps() {
   const [packType, setPackType] = useState('custom');
   const [aesthetic, setAesthetic] = useState('cinematic');
   const [notifyTelegram, setNotifyTelegram] = useState(true);
+  const [beat, setBeat] = useState('');
 
   const reload = () => {
     fetchStudioStatus().then(setStatus).catch((e) => setError(e.message));
@@ -52,7 +53,7 @@ export default function StudioOps() {
     setLoading(true);
     setError(null);
     try {
-      await createPack({ brief: brief.trim(), packType, aesthetic, notifyTelegram });
+      await createPack({ brief: brief.trim(), packType, aesthetic, notifyTelegram, beat: beat || undefined });
       setBrief('');
       reload();
     } catch (err) {
@@ -76,10 +77,27 @@ export default function StudioOps() {
             <Typography variant="h5" fontWeight={800}>
               ${Number(spend.spentUsd || 0).toFixed(2)} / ${spend.capUsd || 15}
             </Typography>
-            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
               <Button size="small" variant="outlined" onClick={() => setStudioSpend({ bumpUsd: 10 }).then(reload)}>+$10 cap</Button>
               <Button size="small" onClick={reload}>Refresh</Button>
+              <Button
+                size="small"
+                color="warning"
+                variant="outlined"
+                onClick={() => clearStudioBuffer()
+                  .then((r) => { setNotice(`Cleared ${r.removedCount || 0} studio buffer asset(s)`); reload(); })
+                  .catch((e) => setError(e.message))}
+              >
+                Clear Studio buffer
+              </Button>
             </Stack>
+            {status?.assetLibrary?.stats && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                Buffer {status.assetLibrary.stats.count}/{status.assetLibrary.stats.maxCount}
+                {' · '}age ≤{status.assetLibrary.stats.maxAgeDays}d
+                {' · '}evict kill leftovers → oldest unused
+              </Typography>
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12} md={8}>
@@ -112,6 +130,13 @@ export default function StudioOps() {
             <InputLabel>Pack type</InputLabel>
             <Select value={packType} label="Pack type" onChange={(e) => setPackType(e.target.value)}>
               {PACK_TYPES.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Beat</InputLabel>
+            <Select value={beat} label="Beat" onChange={(e) => setBeat(e.target.value)}>
+              <MenuItem value="">auto / infer</MenuItem>
+              {['ocr', 'budget', 'splitsmart', 'privacy'].map((b) => <MenuItem key={b} value={b}>{b}</MenuItem>)}
             </Select>
           </FormControl>
           <ToggleButtonGroup exclusive size="small" value={aesthetic} onChange={(_, v) => v && setAesthetic(v)}>
