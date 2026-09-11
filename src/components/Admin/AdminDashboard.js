@@ -86,6 +86,7 @@ import {
   Security as GodModeIcon,
   Language as SEOIcon,
   VideoLibrary as VideoLibraryIcon,
+  MailOutline as MailOutlineIcon,
   AccountTree as BlueprintIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
