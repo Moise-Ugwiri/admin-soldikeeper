@@ -131,6 +131,7 @@ const AgenticBlueprintTab = React.lazy(() => import('./AIAgent/AgenticBlueprintT
 const SEODashboard = React.lazy(() => import('./SEODashboard'));
 const FeatureFlagsManager = React.lazy(() => import('./FeatureFlagsManager'));
 const MediaStudio = React.lazy(() => import('./MediaStudio'));
+const SupportMailbox = React.lazy(() => import('./SupportMailbox'));
 
 
 // Loading fallback component
@@ -558,6 +559,18 @@ const AdminDashboard = () => {
             <AdminErrorBoundary componentName="Media Studio" autoRetry maxRetries={2}>
               <Suspense fallback={<ComponentLoader />}>
                 <MediaStudio />
+              </Suspense>
+            </AdminErrorBoundary>
+          )
+        },
+        {
+          label: '📧 Email',
+          shortLabel: 'Email',
+          icon: <MailOutlineIcon />,
+          component: (
+            <AdminErrorBoundary componentName="Support Mailbox" autoRetry maxRetries={2}>
+              <Suspense fallback={<ComponentLoader />}>
+                <SupportMailbox />
               </Suspense>
             </AdminErrorBoundary>
           )
