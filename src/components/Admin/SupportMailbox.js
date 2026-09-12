@@ -11,6 +11,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import SyncIcon from '@mui/icons-material/Sync';
 import MailIcon from '@mui/icons-material/Mail';
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 const API = process.env.REACT_APP_API_URL || '/api';
 
@@ -59,6 +62,8 @@ export default function SupportMailbox() {
 
   const [compose, setCompose] = useState(null); // { to, subject, text, inReplyTo, references }
   const [sending, setSending] = useState(false);
+  const [diag, setDiag] = useState(null);
+  const [diagnosing, setDiagnosing] = useState(false);
 
   const load = useCallback(async (f = folder) => {
     setLoading(true);
@@ -118,6 +123,24 @@ export default function SupportMailbox() {
     }
   };
 
+  /**
+   * Reading fails for a handful of very different reasons — a group address
+   * with no login, IMAP switched off, a blocked port. Walk the connection and
+   * show which step stops, rather than leaving a bare request failure.
+   */
+  const diagnose = async () => {
+    setDiagnosing(true);
+    setError(null);
+    try {
+      setDiag(await call('/inbox/diagnose'));
+      call('/inbox/status').then(setStatus).catch(() => {});
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDiagnosing(false);
+    }
+  };
+
   const sync = async () => {
     try {
       const r = await call('/inbox/sync', { method: 'POST' });
@@ -155,6 +178,11 @@ export default function SupportMailbox() {
           <Button size="small" startIcon={<RefreshIcon />} onClick={() => load(folder)} disabled={loading}>
             Refresh
           </Button>
+          <Tooltip title="Test the mailbox connection step by step">
+            <span><Button size="small" startIcon={<HealthAndSafetyIcon />} onClick={diagnose} disabled={diagnosing}>
+              {diagnosing ? 'Testing…' : 'Diagnose'}
+            </Button></span>
+          </Tooltip>
           <Tooltip title="Turn new mail into support tickets now">
             <span><Button size="small" startIcon={<SyncIcon />} onClick={sync} disabled={notConfigured}>
               Sync to tickets
@@ -176,7 +204,35 @@ export default function SupportMailbox() {
           Sending also needs <code>RESEND_API_KEY</code>.
         </Alert>
       )}
+      {status?.lastError && !notConfigured && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Last connection attempt failed ({status.lastError.reason}): {status.lastError.detail}
+        </Alert>
+      )}
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {diag && (
+        <Alert
+          severity={diag.ok ? 'success' : 'error'}
+          sx={{ mb: 2 }}
+          onClose={() => setDiag(null)}
+        >
+          <Typography variant="body2" fontWeight={700} gutterBottom>
+            {diag.ok ? 'Mailbox reachable — reading works.' : `Connection stops here: ${diag.reason}`}
+          </Typography>
+          <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none' }}>
+            {(diag.steps || []).map((st) => (
+              <Box component="li" key={st.name} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 0.5 }}>
+                {st.ok
+                  ? <CheckCircleIcon sx={{ fontSize: 16, color: '#10b981', mt: '2px' }} />
+                  : <CancelIcon sx={{ fontSize: 16, color: '#ef4444', mt: '2px' }} />}
+                <Typography variant="caption" sx={{ wordBreak: 'break-word' }}>
+                  <strong>{st.name}</strong> — {st.detail}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Alert>
+      )}
       {notice && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>{notice}</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '360px 1fr' }, gap: 2 }}>
