@@ -64,6 +64,7 @@ export default function SupportMailbox() {
   const [sending, setSending] = useState(false);
   const [diag, setDiag] = useState(null);
   const [diagnosing, setDiagnosing] = useState(false);
+  const [tryUser, setTryUser] = useState('');
 
   const load = useCallback(async (f = folder) => {
     setLoading(true);
@@ -128,11 +129,12 @@ export default function SupportMailbox() {
    * with no login, IMAP switched off, a blocked port. Walk the connection and
    * show which step stops, rather than leaving a bare request failure.
    */
-  const diagnose = async () => {
+  const diagnose = async (asUser) => {
     setDiagnosing(true);
     setError(null);
     try {
-      setDiag(await call('/inbox/diagnose'));
+      const qs = asUser ? `?user=${encodeURIComponent(asUser)}` : '';
+      setDiag(await call(`/inbox/diagnose${qs}`));
       call('/inbox/status').then(setStatus).catch(() => {});
     } catch (err) {
       setError(err.message);
@@ -179,7 +181,7 @@ export default function SupportMailbox() {
             Refresh
           </Button>
           <Tooltip title="Test the mailbox connection step by step">
-            <span><Button size="small" startIcon={<HealthAndSafetyIcon />} onClick={diagnose} disabled={diagnosing}>
+            <span><Button size="small" startIcon={<HealthAndSafetyIcon />} onClick={() => diagnose(tryUser.trim() || undefined)} disabled={diagnosing}>
               {diagnosing ? 'Testing…' : 'Diagnose'}
             </Button></span>
           </Tooltip>
@@ -210,6 +212,26 @@ export default function SupportMailbox() {
         </Alert>
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {diag && !diag.ok && (
+        <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
+          <Typography variant="caption" color="text.secondary">
+            Only one address on the domain is the real mailbox — the other is an alias. Test a
+            different sign-in without redeploying; the stored App Password is reused.
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }} alignItems="center" flexWrap="wrap" useFlexGap>
+            <TextField
+              size="small" placeholder="hello@soldikeeper.com" value={tryUser}
+              onChange={(e) => setTryUser(e.target.value)} sx={{ minWidth: 260 }}
+            />
+            <Button
+              size="small" variant="outlined" disabled={diagnosing || !tryUser.trim()}
+              onClick={() => diagnose(tryUser.trim())}
+            >
+              Test this sign-in
+            </Button>
+          </Stack>
+        </Paper>
+      )}
       {diag && (
         <Alert
           severity={diag.ok ? 'success' : 'error'}
