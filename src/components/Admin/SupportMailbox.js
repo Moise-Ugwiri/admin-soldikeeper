@@ -168,6 +168,12 @@ export default function SupportMailbox() {
             {status?.mailbox || 'support@soldikeeper.com'}
             {unread > 0 && ` · ${unread} unread`}
           </Typography>
+          {status?.scopedTo && (
+            <Typography variant="caption" color="text.secondary">
+              Showing only mail addressed to <strong>{status.scopedTo}</strong> — the rest of this
+              account is not read and is never marked as seen.
+            </Typography>
+          )}
         </Box>
         <Stack direction="row" spacing={1}>
           {folders.length > 0 && (
