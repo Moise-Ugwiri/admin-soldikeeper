@@ -209,6 +209,11 @@ export default function SupportMailbox() {
       {status?.lastError && !notConfigured && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Last connection attempt failed ({status.lastError.reason}): {status.lastError.detail}
+          {status.lastError.raw && (
+            <Typography variant="caption" display="block" sx={{ mt: 0.5, fontFamily: 'monospace' }}>
+              Server replied: {status.lastError.raw}
+            </Typography>
+          )}
         </Alert>
       )}
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
