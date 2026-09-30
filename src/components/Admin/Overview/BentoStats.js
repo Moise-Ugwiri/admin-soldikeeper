@@ -223,7 +223,7 @@ const BentoStats = React.memo(function BentoStats({
         <Stack alignItems="center" spacing={0.5}>
           <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.6, opacity: 0.7 }}>CONVERSION</Typography>
           <Gauge value={Math.round(conversion)} max={100} color={COL.convert} />
-          <Typography sx={{ fontSize: 9.5, opacity: 0.6 }}>free → pro</Typography>
+          <Typography sx={{ fontSize: 9.5, opacity: 0.6 }}>free → standard</Typography>
         </Stack>
       </Paper>
 
